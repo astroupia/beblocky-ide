@@ -61,20 +61,22 @@ export default function IdeConsole({
 
       // Override console methods to capture logs
       if (iframe.contentWindow) {
-        const contentWindow = iframe.contentWindow as any;
+        const contentWindow = iframe.contentWindow as Window & {
+          console: Console;
+        };
         const originalConsole = contentWindow.console;
 
-        contentWindow.console.log = (...args: any[]) => {
+        contentWindow.console.log = (...args: unknown[]) => {
           originalConsole.log(...args);
           addLog(args.map((arg) => formatLogArgument(arg)).join(" "), "info");
         };
 
-        contentWindow.console.error = (...args: any[]) => {
+        contentWindow.console.error = (...args: unknown[]) => {
           originalConsole.error(...args);
           addLog(args.map((arg) => formatLogArgument(arg)).join(" "), "error");
         };
 
-        contentWindow.console.warn = (...args: any[]) => {
+        contentWindow.console.warn = (...args: unknown[]) => {
           originalConsole.warn(...args);
           addLog(
             args.map((arg) => formatLogArgument(arg)).join(" "),
@@ -82,7 +84,7 @@ export default function IdeConsole({
           );
         };
 
-        contentWindow.console.info = (...args: any[]) => {
+        contentWindow.console.info = (...args: unknown[]) => {
           originalConsole.info(...args);
           addLog(args.map((arg) => formatLogArgument(arg)).join(" "), "info");
         };
@@ -134,11 +136,11 @@ export default function IdeConsole({
   };
 
   // Format log arguments for display
-  const formatLogArgument = (arg: any): string => {
+  const formatLogArgument = (arg: unknown): string => {
     if (typeof arg === "object") {
       try {
         return JSON.stringify(arg);
-      } catch (e) {
+      } catch {
         return String(arg);
       }
     }
@@ -172,7 +174,7 @@ export default function IdeConsole({
     if (code) {
       runCode();
     }
-  }, [code]);
+  }, [code, runCode]);
 
   return (
     <Card className="h-full flex flex-col border-none rounded-none shadow-none">

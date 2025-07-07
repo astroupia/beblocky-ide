@@ -23,17 +23,16 @@ import {
   DrawerClose,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Slide } from "@/lib/mock-data"; // Import the updated Slide type
 
 export default function IdeSlides({
   slides,
   courseId,
-  mainCode,
 }: {
   slides: Slide[]; // Use the updated Slide type
   courseId: string;
-  mainCode: string;
 }) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("content");
@@ -99,7 +98,9 @@ export default function IdeSlides({
 
   // Apply content font if provided
   const contentStyle = {
-    fontFamily: (currentSlide as any).contentFont || undefined, // contentFont might not be in mock data yet
+    fontFamily:
+      (currentSlide as Slide & { contentFont?: string }).contentFont ||
+      undefined,
     color: currentSlide.textColor || undefined, // Use textColor for content color
   };
 
@@ -217,9 +218,10 @@ export default function IdeSlides({
                     <div className="my-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       {currentSlide.imageUrls.map((imageUrl, index) => (
                         <div key={index} className="flex justify-center">
-                          <img
+                          <Image
                             src={imageUrl || "/placeholder.svg"}
                             alt={`${currentSlide.title} image ${index + 1}`}
+                            fill
                             className="max-w-full max-h-64 object-contain rounded-md shadow-md hover:shadow-lg transition-shadow"
                           />
                         </div>

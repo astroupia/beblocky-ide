@@ -32,7 +32,7 @@ export default function IdeWorkspace({
   mainCode,
   setMainCode,
 }: {
-  slides: any[];
+  slides: unknown[];
   courseId: string;
   mainCode: string;
   setMainCode: (code: string) => void;

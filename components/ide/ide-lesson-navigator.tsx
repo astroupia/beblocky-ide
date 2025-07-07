@@ -21,12 +21,10 @@ type LessonProps = {
 };
 
 export default function IdeLessonNavigator({
-  courseId,
   currentLessonId,
   onSelectLesson,
   lessons = [],
 }: {
-  courseId: string;
   currentLessonId: string;
   onSelectLesson: (lessonId: string) => void;
   lessons: LessonProps[];

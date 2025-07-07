@@ -10,15 +10,13 @@ import { CoinProvider } from "@/components/ide/context/coin-context";
 import { SettingsProvider } from "@/components/ide/context/settings-context";
 import { AIProvider } from "@/components/ide/context/ai-context";
 import IdeHeader from "@/components/ide/ide-header";
-import useMediaQuery from "@/hooks/use-mobile";
 import { AuthProvider } from "@/components/context/auth-context";
 import { getCourseWithContent } from "@/lib/api";
-import { ICourse, ILesson, ISlide } from "@/types";
+import { ILesson, ISlide } from "@/types";
 
 export default function LearnPage() {
   const params = useParams();
   const courseId = params.courseId as string;
-  const isMobile = useMediaQuery("(max-width: 1000px)");
 
   const [mainCode, setMainCode] = useState<string>("");
   const [currentLayout, setCurrentLayout] = useState<string>("standard");

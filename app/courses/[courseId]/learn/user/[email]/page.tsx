@@ -11,24 +11,29 @@ import { SettingsProvider } from "@/components/ide/context/settings-context";
 import { AIProvider } from "@/components/ide/context/ai-context";
 import IdeHeader from "@/components/ide/ide-header";
 import IdeSettingsPanel from "@/components/ide/ide-settings-panel";
-import useMediaQuery from "@/hooks/use-mobile";
 import { AuthProvider } from "@/components/context/auth-context";
-import {
-  getCourseWithContent,
-  userApi,
-  progressApi,
-  studentApi,
-} from "@/lib/api";
-import { ICourse, ILesson, ISlide } from "@/types";
+import { getCourseWithContent, userApi, progressApi } from "@/lib/api";
+import { ILesson, ISlide } from "@/types";
 import { decryptEmail, generateInitials } from "@/lib/utils";
-import { UserRole } from "@/types/user";
+import { UserRole, IUser } from "@/types/user";
+import { IStudentProgress } from "@/types/progress";
 import IdeLoadingSkeleton from "@/components/ide/ide-loading";
+
+interface UserData extends IUser {
+  id: string;
+  initials: string;
+  progress: Record<string, unknown>;
+  preferences: Record<string, unknown>;
+}
+
+interface UserWithId extends IUser {
+  _id?: string;
+}
 
 export default function LearnPage() {
   const params = useParams();
   const courseId = params.courseId as string;
   const encryptedEmail = params.email as string;
-  const isMobile = useMediaQuery("(max-width: 1000px)");
 
   const [mainCode, setMainCode] = useState<string>("");
   const [currentLayout, setCurrentLayout] = useState<string>("standard");
@@ -38,10 +43,11 @@ export default function LearnPage() {
   const [currentCourseTitle, setCurrentCourseTitle] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userData, setUserData] = useState<any>(null);
-  const [decryptedEmail, setDecryptedEmail] = useState<string>("");
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [userProgress, setUserProgress] = useState<any>(null);
+  const [userProgress, setUserProgress] = useState<IStudentProgress | null>(
+    null
+  );
 
   // Fetch course data and user data from API
   useEffect(() => {
@@ -52,20 +58,22 @@ export default function LearnPage() {
 
         // Decrypt the email
         const email = decryptEmail(encryptedEmail);
-        setDecryptedEmail(email);
 
         // Fetch course data
         const courseData = await getCourseWithContent(courseId);
 
         if (courseData) {
           setCurrentCourseTitle(courseData.courseTitle);
-          setAllLessons((courseData.lessons as any) || []);
+          setAllLessons((courseData.lessons as unknown as ILesson[]) || []);
 
           if (courseData.lessons && courseData.lessons.length > 0) {
             const firstLesson = courseData.lessons[0];
             setCurrentLessonId(firstLesson._id?.toString() || "");
-            setCurrentSlides((firstLesson.slides as any) || []);
-            setMainCode((firstLesson.slides as any)?.[0]?.startingCode || "");
+            setCurrentSlides((firstLesson.slides as unknown as ISlide[]) || []);
+            setMainCode(
+              (firstLesson.slides as unknown as ISlide[])?.[0]?.startingCode ||
+                ""
+            );
           }
         }
 
@@ -79,10 +87,13 @@ export default function LearnPage() {
               userData.email
             );
 
-            const userWithData = {
+            const userWithData: UserData = {
               ...userData,
+              id: (userData as UserWithId)._id?.toString() || "guest",
               initials,
               role: userData.role || UserRole.STUDENT, // Default to student if no role
+              progress: {},
+              preferences: {},
             };
 
             setUserData(userWithData);
@@ -107,7 +118,9 @@ export default function LearnPage() {
                     studentId: userWithData.id,
                     courseId: courseId,
                     lessonId: firstLesson._id?.toString() || "",
-                    code: (firstLesson.slides as any)?.[0]?.startingCode || "",
+                    code:
+                      (firstLesson.slides as unknown as ISlide[])?.[0]
+                        ?.startingCode || "",
                     timeSpent: 0,
                     completed: false,
                   });
@@ -136,6 +149,9 @@ export default function LearnPage() {
               role: UserRole.STUDENT,
               progress: {},
               preferences: {},
+              emailVerified: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
             });
           }
         } else {
@@ -148,6 +164,9 @@ export default function LearnPage() {
             role: UserRole.STUDENT,
             progress: {},
             preferences: {},
+            emailVerified: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           });
         }
       } catch (err) {
@@ -172,30 +191,37 @@ export default function LearnPage() {
     );
 
     if (selectedLesson) {
-      setCurrentSlides((selectedLesson.slides as any) || []);
-      setMainCode((selectedLesson.slides as any)?.[0]?.startingCode || "");
+      setCurrentSlides((selectedLesson.slides as unknown as ISlide[]) || []);
+      setMainCode(
+        (selectedLesson.slides as unknown as ISlide[])?.[0]?.startingCode || ""
+      );
 
       // Update progress for the selected lesson (only for students)
       if (userData?.id !== "guest" && userData?.role === UserRole.STUDENT) {
         try {
           // Check if progress exists for this lesson
           const existingProgress = userProgress?.progress.find(
-            (p: any) => p.lessonId?.toString() === lessonId
+            (p) => p.lessonId?.toString() === lessonId
           );
 
           if (existingProgress) {
             // Update existing progress with new lastAccessed time
-            await progressApi.updateTimeSpent(existingProgress._id.toString(), {
-              timeSpent: existingProgress.timeSpent || 0,
-              lastAccessed: new Date().toISOString(),
-            });
+            await progressApi.updateTimeSpent(
+              existingProgress._id?.toString() || "",
+              {
+                timeSpent: existingProgress.timeSpent || 0,
+                lastAccessed: new Date().toISOString(),
+              }
+            );
           } else {
             // Create new progress for this lesson
             await progressApi.create({
               studentId: userData.id,
               courseId: courseId,
               lessonId: lessonId,
-              code: (selectedLesson.slides as any)?.[0]?.startingCode || "",
+              code:
+                (selectedLesson.slides as unknown as ISlide[])?.[0]
+                  ?.startingCode || "",
               timeSpent: 0,
               completed: false,
             });
@@ -235,10 +261,10 @@ export default function LearnPage() {
     if (userData?.id !== "guest" && userData?.role === UserRole.STUDENT) {
       try {
         // Use existing progress data if available
-        if (userProgress?.progress.length > 0) {
+        if (userProgress?.progress && userProgress.progress.length > 0) {
           // Update existing progress
           const progressId = userProgress.progress.find(
-            (p: any) => p.lessonId?.toString() === currentLessonId
+            (p) => p.lessonId?.toString() === currentLessonId
           )?._id;
           if (progressId) {
             await progressApi.saveCode(progressId.toString(), {
@@ -322,7 +348,7 @@ export default function LearnPage() {
               <div className="flex flex-col h-screen w-screen overflow-hidden">
                 <IdeHeader
                   courseTitle={currentCourseTitle}
-                  userData={userData}
+                  userData={userData || undefined}
                   onSettingsClick={() => setIsSettingsOpen(true)}
                 />
                 <IdeToolbar

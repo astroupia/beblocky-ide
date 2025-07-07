@@ -1,7 +1,6 @@
 import { ICourse, ILesson, ISlide } from "@/types";
-import { IProgress, IStudentProgress, ICourseProgress } from "@/types/progress";
-import { IStudent } from "@/types/student";
-import { UserRole } from "@/types/user";
+import { IProgress, IStudentProgress } from "@/types/progress";
+import { IUser } from "@/types/user";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -40,12 +39,12 @@ async function apiCall<T>(
 export const courseApi = {
   getAll: () => apiCall<ICourse[]>("/courses"),
   getById: (id: string) => apiCall<ICourse>(`/courses/${id}`),
-  create: (data: any) =>
+  create: (data: Record<string, unknown>) =>
     apiCall<ICourse>("/courses", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  update: (id: string, data: any) =>
+  update: (id: string, data: Record<string, unknown>) =>
     apiCall<ICourse>(`/courses/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -62,12 +61,12 @@ export const lessonApi = {
   getById: (id: string) => apiCall<ILesson>(`/lessons/${id}`),
   getByCourseId: (courseId: string) =>
     apiCall<ILesson[]>(`/lessons?courseId=${courseId}`),
-  create: (data: any) =>
+  create: (data: Record<string, unknown>) =>
     apiCall<ILesson>("/lessons", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  update: (id: string, data: any) =>
+  update: (id: string, data: Record<string, unknown>) =>
     apiCall<ILesson>(`/lessons/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -86,12 +85,12 @@ export const slideApi = {
     apiCall<ISlide[]>(`/slides?courseId=${courseId}`),
   getByLessonId: (lessonId: string) =>
     apiCall<ISlide[]>(`/slides?lessonId=${lessonId}`),
-  create: (data: any) =>
+  create: (data: Record<string, unknown>) =>
     apiCall<ISlide>("/slides", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  update: (id: string, data: any) =>
+  update: (id: string, data: Record<string, unknown>) =>
     apiCall<ISlide>(`/slides/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -104,11 +103,11 @@ export const slideApi = {
 
 // User API calls
 export const userApi = {
-  getById: (id: string) => apiCall<any>(`/users/${id}`),
+  getById: (id: string) => apiCall<IUser>(`/users/${id}`),
   getByEmail: (email: string) =>
-    apiCall<any>(`/users/by-email?email=${encodeURIComponent(email)}`),
-  update: (id: string, data: any) =>
-    apiCall<any>(`/users/${id}`, {
+    apiCall<IUser>(`/users/by-email?email=${encodeURIComponent(email)}`),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiCall<IUser>(`/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
@@ -116,7 +115,7 @@ export const userApi = {
 
 // Progress API calls
 export const progressApi = {
-  create: (data: any) =>
+  create: (data: Record<string, unknown>) =>
     apiCall<IProgress>("/progress", {
       method: "POST",
       body: JSON.stringify(data),
@@ -133,17 +132,17 @@ export const progressApi = {
     apiCall<{ percentage: number }>(
       `/progress/${studentId}/${courseId}/percentage`
     ),
-  completeLesson: (id: string, data: any) =>
+  completeLesson: (id: string, data: Record<string, unknown>) =>
     apiCall<IProgress>(`/progress/${id}/complete-lesson`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  saveCode: (id: string, data: any) =>
+  saveCode: (id: string, data: Record<string, unknown>) =>
     apiCall<IProgress>(`/progress/${id}/save-code`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  updateTimeSpent: (id: string, data: any) =>
+  updateTimeSpent: (id: string, data: Record<string, unknown>) =>
     apiCall<IProgress>(`/progress/${id}/time-spent`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -158,20 +157,20 @@ export const progressApi = {
 export const studentApi = {
   getStreak: (id: string) =>
     apiCall<{ streak: number }>(`/students/${id}/streak`),
-  updateActivity: (id: string, data: any) =>
-    apiCall<any>(`/students/${id}/activity`, {
+  updateActivity: (id: string, data: Record<string, unknown>) =>
+    apiCall<Record<string, unknown>>(`/students/${id}/activity`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
   getTotalCoins: (id: string) =>
     apiCall<{ total: number }>(`/students/${id}/coins/total`),
-  addCoins: (id: string, data: any) =>
-    apiCall<any>(`/students/${id}/coins/add`, {
+  addCoins: (id: string, data: Record<string, unknown>) =>
+    apiCall<Record<string, unknown>>(`/students/${id}/coins/add`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateTimeSpent: (id: string, data: any) =>
-    apiCall<any>(`/students/${id}/time-spent`, {
+  updateTimeSpent: (id: string, data: Record<string, unknown>) =>
+    apiCall<Record<string, unknown>>(`/students/${id}/time-spent`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -198,8 +197,12 @@ export const getCourseWithContent = async (courseId: string) => {
 
     // Sort lessons by their order (assuming they have an order field)
     const sortedLessons = lessonsWithSlides.sort((a, b) => {
-      // If lessons don't have order, sort by creation date
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      // If lessons have an order field, use it; otherwise, keep original order
+      return (a as Record<string, unknown>).order &&
+        (b as Record<string, unknown>).order
+        ? ((a as Record<string, unknown>).order as number) -
+            ((b as Record<string, unknown>).order as number)
+        : 0;
     });
 
     return {

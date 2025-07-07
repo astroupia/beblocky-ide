@@ -1,48 +1,45 @@
-"use client"
+"use client";
 
-import { useRef, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Maximize, RefreshCw } from "lucide-react"
+import { useRef, useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Maximize, RefreshCw } from "lucide-react";
 
-export default function IdePreview({
-  mainCode,
-}: {
-  mainCode: string
-}) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+export default function IdePreview({ mainCode }: { mainCode: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const updateIframeContent = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const iframeDocument =
+      iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDocument) {
+      iframeDocument.open();
+      iframeDocument.write(mainCode);
+      iframeDocument.close();
+    }
+  }, [mainCode]);
 
   // Update the iframe content when the code changes
   useEffect(() => {
-    updateIframeContent()
-  }, [mainCode])
-
-  const updateIframeContent = () => {
-    const iframe = iframeRef.current
-    if (!iframe) return
-
-    const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document
-    if (iframeDocument) {
-      iframeDocument.open()
-      iframeDocument.write(mainCode)
-      iframeDocument.close()
-    }
-  }
+    updateIframeContent();
+  }, [updateIframeContent]);
 
   const refreshPreview = () => {
-    setIsRefreshing(true)
-    updateIframeContent()
-    setTimeout(() => setIsRefreshing(false), 500)
-  }
+    setIsRefreshing(true);
+    updateIframeContent();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const openInNewTab = () => {
-    const newTab = window.open("", "_blank")
+    const newTab = window.open("", "_blank");
     if (newTab) {
-      newTab.document.write(mainCode)
-      newTab.document.close()
+      newTab.document.write(mainCode);
+      newTab.document.close();
     }
-  }
+  };
 
   return (
     <Card className="h-full flex flex-col border-none rounded-none shadow-none">
@@ -66,7 +63,12 @@ export default function IdePreview({
             <RefreshCw size={16} />
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={openInNewTab} className="h-8 w-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openInNewTab}
+            className="h-8 w-8"
+          >
             <Maximize size={16} />
           </Button>
         </div>
@@ -81,5 +83,5 @@ export default function IdePreview({
         ></iframe>
       </CardContent>
     </Card>
-  )
+  );
 }
