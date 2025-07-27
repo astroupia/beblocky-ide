@@ -374,6 +374,9 @@ export default function LearnPage() {
                     courseId={courseId}
                     mainCode={mainCode}
                     setMainCode={setMainCode}
+                    lessons={allLessons}
+                    currentLessonId={currentLessonId}
+                    onSelectLesson={handleSelectLesson}
                   />
                 </div>
                 <IdeKeyboardShortcuts

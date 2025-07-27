@@ -1,65 +1,56 @@
 import { Types } from "mongoose";
 
 export interface IProgress {
-  _id?: Types.ObjectId;
-  studentId: Types.ObjectId;
+  userId: string; // String ID from better-auth
   courseId: Types.ObjectId;
   lessonId: Types.ObjectId;
-  completed: boolean;
-  code?: string;
-  timeSpent: number; // in seconds
-  lastAccessed: Date;
-  completedAt?: Date;
+  slideId: Types.ObjectId;
+  isCompleted: boolean;
+  timeSpent: number; // in minutes
+  codeAttempts: number;
+  lastAttemptAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface ICreateProgressDto {
-  studentId: Types.ObjectId;
-  courseId: Types.ObjectId;
-  lessonId: Types.ObjectId;
+  courseId: string;
+  lessonId: string;
+  slideId: string;
+  isCompleted?: boolean;
+  timeSpent?: number;
+  codeAttempts?: number;
 }
 
 export interface IUpdateProgressDto {
-  completed?: boolean;
-  code?: string;
+  isCompleted?: boolean;
   timeSpent?: number;
-  lastAccessed?: Date;
-  completedAt?: Date;
+  codeAttempts?: number;
 }
 
 export interface ICompleteLessonDto {
-  lessonId: Types.ObjectId;
+  lessonId: string;
+  timeSpent: number;
 }
 
 export interface ISaveCodeDto {
+  courseId: string;
+  lessonId: string;
+  slideId: string;
   code: string;
-  lessonId: Types.ObjectId;
-}
-
-export interface ITimeSpentDto {
-  timeSpent: number; // in seconds
+  language: string;
 }
 
 export interface IProgressResponse {
-  progress: IProgress;
-  percentage: number;
-  totalLessons: number;
-  completedLessons: number;
-}
-
-export interface IStudentProgress {
-  studentId: Types.ObjectId;
-  courseId: Types.ObjectId;
-  progress: IProgress[];
-  totalLessons: number;
-  completedLessons: number;
-  percentage: number;
-}
-
-export interface ICourseProgress {
-  courseId: Types.ObjectId;
-  progress: IProgress[];
-  totalStudents: number;
-  averageCompletion: number;
+  id: string;
+  userId: string;
+  courseId: string;
+  lessonId: string;
+  slideId: string;
+  isCompleted: boolean;
+  timeSpent: number;
+  codeAttempts: number;
+  lastAttemptAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }

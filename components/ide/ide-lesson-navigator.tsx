@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -10,13 +9,23 @@ import {
   CheckCircle,
   Circle,
   Lock,
+  Menu,
+  X,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 
 type LessonProps = {
-  _id: string;
-  lessonTitle: string;
-  lessonDescription?: string;
+  _id?: string;
+  title: string;
+  description?: string;
   status?: "completed" | "in-progress" | "locked";
 };
 
@@ -29,8 +38,6 @@ export default function IdeLessonNavigator({
   onSelectLesson: (lessonId: string) => void;
   lessons: LessonProps[];
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   // Add status to lessons if not provided
   const processedLessons = lessons.map((lesson, index) => ({
     ...lesson,
@@ -62,68 +69,53 @@ export default function IdeLessonNavigator({
   };
 
   return (
-    <div className="relative">
-      {isExpanded ? (
-        <Card className="absolute top-0 left-0 w-64 h-[calc(100vh-8rem)] z-10 shadow-lg">
-          <CardHeader className="p-3 border-b">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Course Navigator</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsExpanded(false)}
-              >
-                <ChevronLeft size={16} />
-              </Button>
-            </div>
-            <Progress value={progressPercentage} className="h-1 mt-2" />
-            <div className="text-xs text-muted-foreground mt-1">
-              {completedLessons} of {totalLessons} lessons completed
-            </div>
-          </CardHeader>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Progress value={progressPercentage} className="h-2" />
+        <div className="text-xs text-muted-foreground">
+          {completedLessons} of {totalLessons} lessons completed
+        </div>
+      </div>
 
-          <CardContent className="p-0 flex-1">
-            <ScrollArea className="h-[calc(100vh-12rem)]">
-              <div className="p-2">
-                <ul className="space-y-1">
-                  {processedLessons.map((lesson) => (
-                    <li key={lesson._id}>
-                      <Button
-                        variant={
-                          lesson._id === currentLessonId ? "secondary" : "ghost"
-                        }
-                        className={`w-full justify-start text-xs h-8 ${
-                          lesson.status === "locked" ? "opacity-60" : ""
-                        }`}
-                        onClick={() =>
-                          lesson.status !== "locked" &&
-                          onSelectLesson(lesson._id)
-                        }
-                        disabled={lesson.status === "locked"}
-                      >
-                        <span className="mr-2">
-                          {getStatusIcon(lesson.status || "locked")}
-                        </span>
-                        <span className="truncate">{lesson.lessonTitle}</span>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+      <ScrollArea className="h-[60vh]">
+        <div className="space-y-2">
+          {processedLessons.map((lesson) => (
+            <Button
+              key={lesson._id || lesson.title}
+              variant={lesson._id === currentLessonId ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start text-sm h-auto py-3",
+                lesson.status === "locked" ? "opacity-60" : ""
+              )}
+              onClick={() => {
+                if (lesson.status !== "locked" && lesson._id) {
+                  onSelectLesson(lesson._id);
+                  // Close the drawer after selection
+                  const closeButton = document.querySelector(
+                    '[data-drawer-close="true"]'
+                  );
+                  if (closeButton) {
+                    (closeButton as HTMLElement).click();
+                  }
+                }
+              }}
+              disabled={lesson.status === "locked"}
+            >
+              <span className="mr-2">
+                {getStatusIcon(lesson.status || "locked")}
+              </span>
+              <div className="text-left">
+                <div className="font-medium">{lesson.title}</div>
+                {lesson.description && (
+                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {lesson.description}
+                  </div>
+                )}
               </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute top-4 left-4 z-10"
-          onClick={() => setIsExpanded(true)}
-        >
-          <ChevronRight size={16} className="mr-1" />
-          Lessons
-        </Button>
-      )}
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }

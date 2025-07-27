@@ -23,16 +23,22 @@ import {
   DrawerClose,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Slide } from "@/lib/mock-data"; // Import the updated Slide type
+import type { Slide } from "@/lib/mock-data";
+import IdeLessonNavigator from "./ide-lesson-navigator";
 
 export default function IdeSlides({
   slides,
   courseId,
+  lessons,
+  currentLessonId,
+  onSelectLesson,
 }: {
-  slides: Slide[]; // Use the updated Slide type
+  slides: Slide[];
   courseId: string;
+  lessons?: any[];
+  currentLessonId?: string;
+  onSelectLesson?: (lessonId: string) => void;
 }) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("content");
@@ -132,54 +138,27 @@ export default function IdeSlides({
                 <div>
                   <h3 className="text-lg font-semibold">Lesson Navigator</h3>
                   <p className="text-sm text-muted-foreground">
-                    Browse all slides in this lesson
+                    Browse all lessons in this course
                   </p>
                 </div>
-                <DrawerClose asChild>
-                  <Button variant="ghost" size="icon">
-                    <X size={16} />
-                  </Button>
-                </DrawerClose>
               </div>
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-2">
-                  {slides.map((slide, index) => (
-                    <Button
-                      key={index}
-                      variant={
-                        index === currentSlideIndex ? "default" : "outline"
-                      }
-                      className={cn(
-                        "w-full justify-start text-left h-auto py-3",
-                        index === currentSlideIndex && "border-primary"
-                      )}
-                      onClick={() => {
-                        setCurrentSlideIndex(index);
-                        const closeButton = document.querySelector(
-                          '[data-drawer-close="true"]'
-                        );
-                        if (closeButton) {
-                          (closeButton as HTMLElement).click();
-                        }
-                      }}
-                    >
-                      <div>
-                        <div className="font-medium">
-                          {slide.title || `Slide ${index + 1}`}
-                        </div>
-                        {slide.content && (
-                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {slide.content
-                              .replace(/<[^>]*>/g, " ")
-                              .substring(0, 100)}
-                            ...
-                          </div>
-                        )}
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
+              <div className="flex-1 p-4">
+                {lessons && onSelectLesson && currentLessonId ? (
+                  <IdeLessonNavigator
+                    currentLessonId={currentLessonId}
+                    onSelectLesson={onSelectLesson}
+                    lessons={lessons.map((lesson: any) => ({
+                      _id: lesson._id?.toString(),
+                      title: lesson.title,
+                      description: lesson.description,
+                    }))}
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground">
+                    No lessons available
+                  </div>
+                )}
+              </div>
             </DrawerContent>
           </Drawer>
           <div className="text-sm font-medium">Learning Materials</div>
@@ -218,10 +197,9 @@ export default function IdeSlides({
                     <div className="my-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       {currentSlide.imageUrls.map((imageUrl, index) => (
                         <div key={index} className="flex justify-center">
-                          <Image
+                          <img
                             src={imageUrl || "/placeholder.svg"}
                             alt={`${currentSlide.title} image ${index + 1}`}
-                            fill
                             className="max-w-full max-h-64 object-contain rounded-md shadow-md hover:shadow-lg transition-shadow"
                           />
                         </div>

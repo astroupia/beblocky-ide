@@ -25,17 +25,25 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Slide } from "@/lib/mock-data";
+import { ILesson } from "@/types";
 
 export default function IdeWorkspace({
   slides,
   courseId,
   mainCode,
   setMainCode,
+  lessons,
+  currentLessonId,
+  onSelectLesson,
 }: {
   slides: unknown[];
   courseId: string;
   mainCode: string;
   setMainCode: (code: string) => void;
+  lessons?: ILesson[];
+  currentLessonId?: string;
+  onSelectLesson?: (lessonId: string) => void;
 }) {
   const { theme } = useTheme();
   const isMobile = useMediaQuery("(max-width: 1000px)");
@@ -178,6 +186,9 @@ export default function IdeWorkspace({
                   slides={slides}
                   courseId={courseId}
                   mainCode={mainCode}
+                  lessons={lessons}
+                  currentLessonId={currentLessonId}
+                  onSelectLesson={onSelectLesson}
                 />
               </TabsContent>
 
@@ -214,6 +225,9 @@ export default function IdeWorkspace({
                         slides={slides}
                         courseId={courseId}
                         mainCode={mainCode}
+                        lessons={lessons}
+                        currentLessonId={currentLessonId}
+                        onSelectLesson={onSelectLesson}
                       />
                     </ResizablePanel>
                     <ResizableHandle withHandle />
