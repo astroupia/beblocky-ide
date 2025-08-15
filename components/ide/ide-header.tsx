@@ -43,10 +43,24 @@ export default function IdeHeader({
   // Check if user should see coins (only student roles)
   const shouldShowCoins = userData?.role === UserRole.STUDENT;
 
+  // Determine navigation URL based on user role
+  const getNavigationUrl = () => {
+    const role = userData?.role;
+    if (
+      role === UserRole.ADMIN ||
+      role === UserRole.TEACHER ||
+      role === UserRole.ORGANIZATION
+    ) {
+      return "https://admin.beblocky.com";
+    } else {
+      return "https://code.beblocky.com";
+    }
+  };
+
   return (
     <header className="h-16 w-full border-b flex items-center justify-between px-4 transition-colors duration-200 bg-background">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard" className="h-full flex items-center">
+        <a href={getNavigationUrl()} className="h-full flex items-center">
           <Image
             src={Logo}
             alt="Logo"
@@ -54,7 +68,7 @@ export default function IdeHeader({
             height={100}
             // className="h-20 w-auto"
           />
-        </Link>
+        </a>
         {courseTitle && (
           <div className="hidden md:block">
             <h1 className="text-lg font-semibold text-foreground">

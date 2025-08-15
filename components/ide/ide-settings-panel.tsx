@@ -1,54 +1,66 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useSettings } from "./context/settings-context"
-import { useTheme } from "./context/theme-provider"
-import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, Monitor, Keyboard, Palette } from "lucide-react"
+import { useState, useEffect } from "react";
+import { useSettings } from "./context/settings-context";
+import { useTheme } from "./context/theme-provider";
+import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X, Monitor, Keyboard, Palette } from "lucide-react";
 
-export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { settings, updateSettings } = useSettings()
-  const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState("appearance")
+export default function IdeSettingsPanel({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const { settings, updateSettings } = useSettings();
+  const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState("appearance");
 
   // Clone settings for local state
-  const [localSettings, setLocalSettings] = useState({ ...settings })
+  const [localSettings, setLocalSettings] = useState({ ...settings });
 
   // Update local settings when the settings context changes
   useEffect(() => {
     // Force a re-render when isOpen changes
     if (isOpen) {
-      document.body.style.overflow = "hidden"
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = ""
+      document.body.style.overflow = "";
     }
 
     return () => {
-      document.body.style.overflow = ""
-    }
-  }, [isOpen])
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   useEffect(() => {
-    setLocalSettings({ ...settings })
-  }, [settings])
+    setLocalSettings({ ...settings });
+  }, [settings]);
 
   const handleSave = () => {
-    updateSettings(localSettings)
-    onClose()
-  }
+    updateSettings(localSettings);
+    onClose();
+  };
 
   const handleCancel = () => {
-    setLocalSettings({ ...settings })
-    onClose()
-  }
+    setLocalSettings({ ...settings });
+    onClose();
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const editorThemes = [
     { value: "dracula", label: "Dracula" },
@@ -58,7 +70,7 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
     { value: "twilight", label: "Twilight" },
     { value: "xcode", label: "XCode" },
     { value: "chrome", label: "Chrome" },
-  ]
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -73,7 +85,11 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
         </CardHeader>
 
         <div className="flex-1 overflow-auto">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <div className="border-b">
               <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
                 <TabsTrigger
@@ -83,7 +99,7 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                   <Palette size={16} />
                   <span>Appearance</span>
                 </TabsTrigger>
-                <TabsTrigger
+                {/* <TabsTrigger
                   value="editor"
                   className="flex items-center gap-2 rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-primary"
                 >
@@ -96,7 +112,7 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                 >
                   <Keyboard size={16} />
                   <span>Keyboard</span>
-                </TabsTrigger>
+                </TabsTrigger> */}
               </TabsList>
             </div>
 
@@ -127,7 +143,9 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                 <Label>Editor Theme</Label>
                 <Select
                   value={localSettings.editorTheme}
-                  onValueChange={(value) => setLocalSettings({ ...localSettings, editorTheme: value })}
+                  onValueChange={(value) =>
+                    setLocalSettings({ ...localSettings, editorTheme: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a theme" />
@@ -146,8 +164,12 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
             <TabsContent value="editor" className="p-4 space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="fontSize">Font Size: {localSettings.fontSize}px</Label>
-                  <span className="text-sm text-muted-foreground">{localSettings.fontSize}px</span>
+                  <Label htmlFor="fontSize">
+                    Font Size: {localSettings.fontSize}px
+                  </Label>
+                  <span className="text-sm text-muted-foreground">
+                    {localSettings.fontSize}px
+                  </span>
                 </div>
                 <Slider
                   id="fontSize"
@@ -155,7 +177,9 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                   max={24}
                   step={1}
                   value={[localSettings.fontSize]}
-                  onValueChange={(value) => setLocalSettings({ ...localSettings, fontSize: value[0] })}
+                  onValueChange={(value) =>
+                    setLocalSettings({ ...localSettings, fontSize: value[0] })
+                  }
                 />
               </div>
 
@@ -165,10 +189,14 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                   <Switch
                     id="autoSave"
                     checked={localSettings.autoSave}
-                    onCheckedChange={(checked) => setLocalSettings({ ...localSettings, autoSave: checked })}
+                    onCheckedChange={(checked) =>
+                      setLocalSettings({ ...localSettings, autoSave: checked })
+                    }
                   />
                 </div>
-                <p className="text-sm text-muted-foreground">Automatically save your code changes as you type</p>
+                <p className="text-sm text-muted-foreground">
+                  Automatically save your code changes as you type
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -177,21 +205,32 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                   <Switch
                     id="wordWrap"
                     checked={localSettings.wordWrap}
-                    onCheckedChange={(checked) => setLocalSettings({ ...localSettings, wordWrap: checked })}
+                    onCheckedChange={(checked) =>
+                      setLocalSettings({ ...localSettings, wordWrap: checked })
+                    }
                   />
                 </div>
-                <p className="text-sm text-muted-foreground">Wrap long lines to fit within the editor</p>
+                <p className="text-sm text-muted-foreground">
+                  Wrap long lines to fit within the editor
+                </p>
               </div>
             </TabsContent>
 
             <TabsContent value="keyboard" className="p-4 space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="keyboardShortcuts">Enable Keyboard Shortcuts</Label>
+                  <Label htmlFor="keyboardShortcuts">
+                    Enable Keyboard Shortcuts
+                  </Label>
                   <Switch
                     id="keyboardShortcuts"
                     checked={localSettings.keyboardShortcuts}
-                    onCheckedChange={(checked) => setLocalSettings({ ...localSettings, keyboardShortcuts: checked })}
+                    onCheckedChange={(checked) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        keyboardShortcuts: checked,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -201,19 +240,27 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
                 <div className="bg-muted rounded-md p-3 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Run Code</span>
-                    <kbd className="px-2 py-0.5 bg-background rounded border">Ctrl + Enter</kbd>
+                    <kbd className="px-2 py-0.5 bg-background rounded border">
+                      Ctrl + Enter
+                    </kbd>
                   </div>
                   <div className="flex justify-between">
                     <span>Save</span>
-                    <kbd className="px-2 py-0.5 bg-background rounded border">Ctrl + S</kbd>
+                    <kbd className="px-2 py-0.5 bg-background rounded border">
+                      Ctrl + S
+                    </kbd>
                   </div>
                   <div className="flex justify-between">
                     <span>Format Code</span>
-                    <kbd className="px-2 py-0.5 bg-background rounded border">Shift + Alt + F</kbd>
+                    <kbd className="px-2 py-0.5 bg-background rounded border">
+                      Shift + Alt + F
+                    </kbd>
                   </div>
                   <div className="flex justify-between">
                     <span>Toggle Comment</span>
-                    <kbd className="px-2 py-0.5 bg-background rounded border">Ctrl + /</kbd>
+                    <kbd className="px-2 py-0.5 bg-background rounded border">
+                      Ctrl + /
+                    </kbd>
                   </div>
                 </div>
               </div>
@@ -229,5 +276,5 @@ export default function IdeSettingsPanel({ isOpen, onClose }: { isOpen: boolean;
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

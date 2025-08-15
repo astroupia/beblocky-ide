@@ -19,15 +19,19 @@ import { UserRole, IUser } from "@/types/user";
 import { IStudentProgress } from "@/types/progress";
 import IdeLoadingSkeleton from "@/components/ide/ide-loading";
 
-interface UserData extends IUser {
+interface UserData {
   id: string;
+  _id?: string;
+  name: string;
+  email: string;
   initials: string;
+  role: UserRole;
   progress: Record<string, unknown>;
   preferences: Record<string, unknown>;
-}
-
-interface UserWithId extends IUser {
-  _id?: string;
+  emailVerified: boolean;
+  image?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export default function LearnPage() {
@@ -48,6 +52,7 @@ export default function LearnPage() {
   const [userProgress, setUserProgress] = useState<IStudentProgress | null>(
     null
   );
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
 
   // Fetch course data and user data from API
   useEffect(() => {
@@ -89,7 +94,7 @@ export default function LearnPage() {
 
             const userWithData: UserData = {
               ...userData,
-              id: (userData as UserWithId)._id?.toString() || "guest",
+              id: userData._id?.toString() || "guest",
               initials,
               role: userData.role || UserRole.STUDENT, // Default to student if no role
               progress: {},
@@ -152,6 +157,7 @@ export default function LearnPage() {
               emailVerified: false,
               createdAt: new Date(),
               updatedAt: new Date(),
+              _id: "guest",
             });
           }
         } else {
@@ -167,6 +173,7 @@ export default function LearnPage() {
             emailVerified: false,
             createdAt: new Date(),
             updatedAt: new Date(),
+            _id: "guest",
           });
         }
       } catch (err) {
@@ -201,7 +208,8 @@ export default function LearnPage() {
         try {
           // Check if progress exists for this lesson
           const existingProgress = userProgress?.progress.find(
-            (p) => p.lessonId?.toString() === lessonId
+            (p: { lessonId?: { toString: () => string } }) =>
+              p.lessonId?.toString() === lessonId
           );
 
           if (existingProgress) {
@@ -251,7 +259,7 @@ export default function LearnPage() {
   };
 
   // Handle saving code with user context
-  const handleSaveCode = async () => {
+  const handleSaveCode = async (): Promise<void> => {
     const saveKey = `code-${courseId}-${currentLessonId}-${
       userData?.id || "guest"
     }`;
@@ -264,7 +272,10 @@ export default function LearnPage() {
         if (userProgress?.progress && userProgress.progress.length > 0) {
           // Update existing progress
           const progressId = userProgress.progress.find(
-            (p) => p.lessonId?.toString() === currentLessonId
+            (p: {
+              lessonId?: { toString: () => string };
+              _id?: { toString: () => string };
+            }) => p.lessonId?.toString() === currentLessonId
           )?._id;
           if (progressId) {
             await progressApi.saveCode(progressId.toString(), {
@@ -303,13 +314,10 @@ export default function LearnPage() {
           );
           setUserProgress(updatedProgress);
         }
-        alert("Code saved successfully!");
       } catch (error) {
         console.error("Failed to save to backend:", error);
-        alert("Code saved locally, but failed to save to server.");
+        throw new Error("Failed to save to server");
       }
-    } else {
-      alert("Code saved locally (guest mode)");
     }
   };
 
@@ -317,6 +325,11 @@ export default function LearnPage() {
   const handleFormatCode = () => {
     // TODO: Implement code formatting
     console.log("Format code functionality to be implemented");
+  };
+
+  // Handle AI assistant toggle
+  const handleToggleAiAssistant = () => {
+    setShowAiAssistant(!showAiAssistant);
   };
 
   if (loading) {
@@ -354,6 +367,7 @@ export default function LearnPage() {
                 <IdeToolbar
                   onRunCode={handleRunCode}
                   onSaveCode={handleSaveCode}
+                  mainCode={mainCode}
                   onChangeLayout={(layout) => {
                     setCurrentLayout(layout);
                     const workspace = document.querySelector(
@@ -367,6 +381,8 @@ export default function LearnPage() {
                     }
                   }}
                   currentLayout={currentLayout}
+                  onToggleAiAssistant={handleToggleAiAssistant}
+                  showAiAssistant={showAiAssistant}
                 />
                 <div className="flex-1 overflow-hidden relative">
                   <IdeWorkspace
@@ -377,6 +393,9 @@ export default function LearnPage() {
                     lessons={allLessons}
                     currentLessonId={currentLessonId}
                     onSelectLesson={handleSelectLesson}
+                    currentLayout={currentLayout}
+                    showAiAssistant={showAiAssistant}
+                    onToggleAiAssistant={handleToggleAiAssistant}
                   />
                 </div>
                 <IdeKeyboardShortcuts

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,12 +34,12 @@ export default function IdeConsole({
   const consoleRef = useRef<HTMLDivElement>(null);
 
   // Clear logs
-  const clearLogs = () => {
+  const clearLogs = useCallback(() => {
     setLogs([]);
-  };
+  }, []);
 
   // Add a log entry
-  const addLog = (message: string, level: LogLevel = "info") => {
+  const addLog = useCallback((message: string, level: LogLevel = "info") => {
     const newLog: LogEntry = {
       id: Date.now().toString(),
       message,
@@ -47,10 +47,10 @@ export default function IdeConsole({
       timestamp: new Date(),
     };
     setLogs((prev) => [...prev, newLog]);
-  };
+  }, []);
 
   // Run code and capture console output
-  const runCode = () => {
+  const runCode = useCallback(() => {
     clearLogs();
 
     try {
@@ -98,29 +98,21 @@ export default function IdeConsole({
           doc.open();
           doc.write(code);
           doc.close();
-
-          addLog("Code executed successfully", "success");
         } catch (error) {
-          if (error instanceof Error) {
-            addLog(`Runtime error: ${error.message}`, "error");
-          } else {
-            addLog(`Unknown error occurred`, "error");
-          }
+          addLog(`Error running code: ${error}`, "error");
         }
-      }
 
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 100);
-    } catch (error) {
-      if (error instanceof Error) {
-        addLog(`Error: ${error.message}`, "error");
-      } else {
-        addLog(`Unknown error occurred`, "error");
+        // Clean up iframe after a delay
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
       }
+    } catch (error) {
+      addLog(`Error setting up console: ${error}`, "error");
     }
-  };
+  }, [code, clearLogs, addLog]);
 
   // Extract JavaScript code from HTML
   const extractJavaScriptFromHTML = (html: string): string => {

@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Slide } from "@/lib/mock-data";
 import IdeLessonNavigator from "./ide-lesson-navigator";
+import IdeMarkdownPreview from "./ide-markdown-preview";
 
 export default function IdeSlides({
   slides,
@@ -49,7 +50,7 @@ export default function IdeSlides({
     courseId: courseId,
     order: 0,
     title: "No slides available",
-    content: "<p>This lesson doesn't have any slides yet.</p>",
+    content: "This lesson doesn't have any slides yet.",
     imageUrls: [],
     backgroundColor: "#FFFFFF",
     textColor: "#000000",
@@ -75,12 +76,12 @@ export default function IdeSlides({
 
   // Extract code blocks from content
   const extractCodeBlocks = (content: string) => {
-    const codeRegex = /<code>([\s\S]*?)<\/code>/g;
+    const codeRegex = /```[\s\S]*?```/g;
     const matches = [];
     let match;
 
     while ((match = codeRegex.exec(content)) !== null) {
-      matches.push(match[1]);
+      matches.push(match[0]);
     }
 
     return matches;
@@ -90,42 +91,10 @@ export default function IdeSlides({
     ? extractCodeBlocks(currentSlide.content)
     : [];
 
-  // Apply slide styling if provided
-  const slideStyle = {
-    backgroundColor: currentSlide.backgroundColor || undefined,
-    color: currentSlide.textColor || undefined, // Use textColor for content color
-  };
-
-  // Apply title font if provided
-  const titleStyle = {
-    fontFamily: currentSlide.titleFont || undefined,
-    color: currentSlide.themeColors?.main || undefined, // Use themeColors.main for title color
-  };
-
-  // Apply content font if provided
-  const contentStyle = {
-    fontFamily:
-      (currentSlide as Slide & { contentFont?: string }).contentFont ||
-      undefined,
-    color: currentSlide.textColor || undefined, // Use textColor for content color
-  };
-
-  // Format content with syntax highlighting for code blocks
-  const formatContent = (content: string) => {
-    if (!content) return "";
-
-    // Replace code blocks with syntax highlighted versions
-    return content.replace(
-      /<code>([\s\S]*?)<\/code>/g,
-      (_, code) =>
-        `<pre class="bg-muted p-3 rounded-md overflow-x-auto my-4 text-sm"><code class="language-html">${code}</code></pre>`
-    );
-  };
-
   return (
-    <Card className="h-full flex flex-col border-none rounded-none shadow-none overflow-hidden">
-      <CardHeader className="p-2 border-b flex-row items-center justify-between space-y-0 bg-muted/30">
-        <div className="flex items-center gap-2">
+    <Card className="h-full min-w-0 flex flex-col border-none rounded-none shadow-none overflow-hidden">
+      <CardHeader className="p-2 border-b flex-row items-center justify-between space-y-0 bg-muted/30 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <Drawer>
             <DrawerTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -161,7 +130,7 @@ export default function IdeSlides({
               </div>
             </DrawerContent>
           </Drawer>
-          <div className="text-sm font-medium">Learning Materials</div>
+          <div className="text-sm font-medium truncate">Learning Materials</div>
         </div>
         <div className="text-xs text-muted-foreground">
           Slide {currentSlideIndex + 1} of {totalSlides || 1}
@@ -171,7 +140,7 @@ export default function IdeSlides({
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="flex-1 flex flex-col overflow-hidden"
+        className="flex-1 flex flex-col overflow-hidden min-w-0"
       >
         <TabsList className="px-4 pt-2 justify-start flex-shrink-0">
           <TabsTrigger value="content" className="text-xs">
@@ -184,44 +153,19 @@ export default function IdeSlides({
           )}
         </TabsList>
 
-        <TabsContent value="content" className="flex-1 overflow-hidden m-0 p-0">
-          <div className="h-full overflow-y-auto scrollbar-hide">
-            <CardContent className="p-4" style={slideStyle}>
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold" style={titleStyle}>
-                  {currentSlide.title}
-                </h2>
-
-                {currentSlide.imageUrls &&
-                  currentSlide.imageUrls.length > 0 && (
-                    <div className="my-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {currentSlide.imageUrls.map((imageUrl, index) => (
-                        <div key={index} className="flex justify-center">
-                          <img
-                            src={imageUrl || "/placeholder.svg"}
-                            alt={`${currentSlide.title} image ${index + 1}`}
-                            className="max-w-full max-h-64 object-contain rounded-md shadow-md hover:shadow-lg transition-shadow"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                <div
-                  className="prose dark:prose-invert max-w-none"
-                  style={contentStyle}
-                  dangerouslySetInnerHTML={{
-                    __html: formatContent(currentSlide.content || ""),
-                  }}
-                />
-              </div>
-            </CardContent>
-          </div>
+        <TabsContent
+          value="content"
+          className="flex-1 overflow-hidden m-0 p-0 min-w-0"
+        >
+          <IdeMarkdownPreview content={currentSlide.content || ""} />
         </TabsContent>
 
-        <TabsContent value="code" className="flex-1 overflow-hidden m-0 p-0">
-          <div className="h-full overflow-y-auto scrollbar-hide">
-            <CardContent className="p-4 bg-muted/10">
+        <TabsContent
+          value="code"
+          className="flex-1 overflow-hidden m-0 p-0 min-w-0"
+        >
+          <div className="h-full overflow-y-auto scrollbar-hide min-w-0 max-w-full">
+            <CardContent className="p-4 bg-muted/10 min-w-0 max-w-full">
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Code size={18} className="text-primary" />
@@ -256,7 +200,7 @@ export default function IdeSlides({
                           )}
                         </Button>
                       </div>
-                      <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono border-l-4 border-primary">
+                      <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono border-l-4 border-primary max-w-full">
                         {currentSlide.startingCode}
                       </pre>
                     </div>
@@ -265,13 +209,16 @@ export default function IdeSlides({
 
                 {/* Code Blocks from Content */}
                 {codeBlocks.length > 0 && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 min-w-0 max-w-full">
                     <h4 className="text-md font-medium text-muted-foreground flex items-center gap-2">
                       <Code size={16} />
                       Code Examples from Content
                     </h4>
                     {codeBlocks.map((code, index) => (
-                      <div key={index} className="relative group">
+                      <div
+                        key={index}
+                        className="relative group min-w-0 max-w-full"
+                      >
                         <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
@@ -290,7 +237,7 @@ export default function IdeSlides({
                             )}
                           </Button>
                         </div>
-                        <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono">
+                        <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono max-w-full">
                           {code}
                         </pre>
                       </div>
@@ -310,7 +257,7 @@ export default function IdeSlides({
         </TabsContent>
       </Tabs>
 
-      <div className="p-4 border-t flex-shrink-0">
+      <div className="p-4 border-t flex-shrink-0 min-w-0">
         <div className="flex items-center justify-between mb-2">
           <Button
             variant="outline"

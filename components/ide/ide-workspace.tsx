@@ -14,16 +14,7 @@ import IdeEditor from "./ide-editor";
 import IdePreview from "./ide-preview";
 import IdeAiAssistant from "./ide-ai-assistant";
 import IdeConsole from "./ide-console";
-import {
-  Book,
-  Code,
-  Play,
-  Bot,
-  LayoutGrid,
-  LayoutList,
-  Terminal,
-  ChevronUp,
-} from "lucide-react";
+import { Book, Code, Play, Bot, Terminal, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Slide } from "@/lib/mock-data";
 import { ILesson } from "@/types";
@@ -36,24 +27,26 @@ export default function IdeWorkspace({
   lessons,
   currentLessonId,
   onSelectLesson,
+  currentLayout,
+  showAiAssistant,
+  onToggleAiAssistant,
 }: {
-  slides: unknown[];
+  slides: any[]; // Changed from unknown[] to any[] to match expected types
   courseId: string;
   mainCode: string;
   setMainCode: (code: string) => void;
   lessons?: ILesson[];
   currentLessonId?: string;
   onSelectLesson?: (lessonId: string) => void;
+  currentLayout: string;
+  showAiAssistant: boolean;
+  onToggleAiAssistant: () => void;
 }) {
   const { theme } = useTheme();
   const isMobile = useMediaQuery("(max-width: 1000px)");
   const [activeTab, setActiveTab] = useState("editor");
-  const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [showConsole, setShowConsole] = useState(false);
   const [consoleMinimized, setConsoleMinimized] = useState(true);
-  const [currentLayout, setCurrentLayout] = useState<
-    "standard" | "split" | "focus"
-  >("standard");
 
   // Default layout configuration
   const getLayoutSizes = () => {
@@ -71,17 +64,6 @@ export default function IdeWorkspace({
     }
   };
 
-  const toggleLayout = () => {
-    const layouts: ("standard" | "split" | "focus")[] = [
-      "standard",
-      "split",
-      "focus",
-    ];
-    const currentIndex = layouts.indexOf(currentLayout);
-    const nextIndex = (currentIndex + 1) % layouts.length;
-    setCurrentLayout(layouts[nextIndex]);
-  };
-
   const toggleConsole = () => {
     if (showConsole && !consoleMinimized) {
       setConsoleMinimized(true);
@@ -91,26 +73,14 @@ export default function IdeWorkspace({
     }
   };
 
+  // Get starting code safely
+  const getStartingCode = () => {
+    const firstSlide = slides?.[0];
+    return firstSlide?.startingCode || "";
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Layout toggle button */}
-      <div className="absolute top-20 right-4 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={toggleLayout}
-          className="h-8 w-8 p-0 rounded-full bg-background/80 backdrop-blur-sm"
-        >
-          {currentLayout === "standard" ? (
-            <LayoutGrid size={14} />
-          ) : currentLayout === "split" ? (
-            <LayoutList size={14} />
-          ) : (
-            <Code size={14} />
-          )}
-        </Button>
-      </div>
-
       {/* Minimized console tab */}
       {showConsole && consoleMinimized && !isMobile && (
         <div
@@ -152,14 +122,14 @@ export default function IdeWorkspace({
       )}
 
       <div
-        className="flex-1 overflow-hidden relative"
+        className="flex-1 overflow-hidden relative min-w-0"
         data-ide-workspace="true"
       >
         {isMobile ? (
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="h-full flex flex-col"
+            className="h-full flex flex-col min-w-0"
           >
             <TabsList className="w-full justify-between bg-muted/50 p-1">
               <TabsTrigger value="slides" className="flex items-center gap-2">
@@ -185,7 +155,6 @@ export default function IdeWorkspace({
                 <IdeSlides
                   slides={slides}
                   courseId={courseId}
-                  mainCode={mainCode}
                   lessons={lessons}
                   currentLessonId={currentLessonId}
                   onSelectLesson={onSelectLesson}
@@ -195,7 +164,7 @@ export default function IdeWorkspace({
               <TabsContent value="editor" className="h-full m-0 p-0">
                 <IdeEditor
                   setMainCode={setMainCode}
-                  startingCode={slides[0]?.startingCode}
+                  startingCode={getStartingCode()}
                 />
               </TabsContent>
 
@@ -204,27 +173,30 @@ export default function IdeWorkspace({
               </TabsContent>
 
               <TabsContent value="ai" className="h-full m-0 p-0">
-                <IdeAiAssistant slides={slides} code={mainCode} />
+                <IdeAiAssistant code={mainCode} />
               </TabsContent>
             </div>
           </Tabs>
         ) : (
-          <ResizablePanelGroup direction="vertical" className="h-full">
+          <ResizablePanelGroup direction="vertical" className="h-full min-w-0">
             <ResizablePanel
               defaultSize={showConsole && !consoleMinimized ? 70 : 100}
               minSize={40}
             >
-              <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanelGroup
+                direction="horizontal"
+                className="h-full min-w-0"
+              >
                 {currentLayout !== "focus" && (
                   <>
                     <ResizablePanel
                       defaultSize={getLayoutSizes()[0]}
                       minSize={15}
+                      className="min-w-0 overflow-hidden"
                     >
                       <IdeSlides
                         slides={slides}
                         courseId={courseId}
-                        mainCode={mainCode}
                         lessons={lessons}
                         currentLessonId={currentLessonId}
                         onSelectLesson={onSelectLesson}
@@ -234,16 +206,24 @@ export default function IdeWorkspace({
                   </>
                 )}
 
-                <ResizablePanel defaultSize={getLayoutSizes()[1]} minSize={25}>
+                <ResizablePanel
+                  defaultSize={getLayoutSizes()[1]}
+                  minSize={25}
+                  className="min-w-0 overflow-hidden"
+                >
                   <IdeEditor
                     setMainCode={setMainCode}
-                    startingCode={slides[0]?.startingCode}
+                    startingCode={getStartingCode()}
                   />
                 </ResizablePanel>
 
                 <ResizableHandle withHandle />
 
-                <ResizablePanel defaultSize={getLayoutSizes()[2]} minSize={15}>
+                <ResizablePanel
+                  defaultSize={getLayoutSizes()[2]}
+                  minSize={15}
+                  className="min-w-0 overflow-hidden"
+                >
                   <IdePreview mainCode={mainCode} />
                 </ResizablePanel>
 
@@ -253,8 +233,9 @@ export default function IdeWorkspace({
                     <ResizablePanel
                       defaultSize={getLayoutSizes()[3]}
                       minSize={15}
+                      className="min-w-0 overflow-hidden"
                     >
-                      <IdeAiAssistant slides={slides} code={mainCode} />
+                      <IdeAiAssistant code={mainCode} />
                     </ResizablePanel>
                   </>
                 )}
@@ -264,7 +245,11 @@ export default function IdeWorkspace({
             {showConsole && !consoleMinimized && (
               <>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={30} minSize={20}>
+                <ResizablePanel
+                  defaultSize={30}
+                  minSize={20}
+                  className="min-w-0 overflow-hidden"
+                >
                   <IdeConsole
                     code={mainCode}
                     onMinimize={() => setConsoleMinimized(true)}
@@ -275,32 +260,6 @@ export default function IdeWorkspace({
           </ResizablePanelGroup>
         )}
       </div>
-
-      {!isMobile && (
-        <div className="fixed bottom-4 right-4 z-10">
-          <button
-            onClick={() => setShowAiAssistant(!showAiAssistant)}
-            className={`relative p-3 rounded-full shadow-lg transition-all duration-300 ${
-              showAiAssistant
-                ? "bg-gradient-to-r from-purple-600 to-blue-500 text-white"
-                : "bg-gradient-to-r from-purple-500/80 to-blue-400/80 text-white hover:from-purple-600 hover:to-blue-500"
-            }`}
-          >
-            <Bot size={24} />
-            <span className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping"></span>
-            <span
-              className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                showAiAssistant ? "bg-green-500" : "bg-blue-400"
-              }`}
-            ></span>
-          </button>
-          {!showAiAssistant && (
-            <div className="absolute -top-10 right-0 bg-background border rounded-md px-3 py-1 text-xs shadow-md whitespace-nowrap">
-              Ask AI Assistant
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
