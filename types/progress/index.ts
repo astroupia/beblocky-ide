@@ -54,3 +54,16 @@ export interface IProgressResponse {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface IStudentProgress {
+  studentId: string;
+  courseId: string;
+  progress: Array<{
+    _id?: Types.ObjectId;
+    lessonId?: Types.ObjectId;
+    code?: string;
+    timeSpent?: number;
+    completed?: boolean;
+    lastAccessed?: string;
+  }>;
+}
