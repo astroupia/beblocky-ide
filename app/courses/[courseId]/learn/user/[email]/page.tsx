@@ -42,6 +42,7 @@ export default function LearnPage() {
   const [mainCode, setMainCode] = useState<string>("");
   const [currentLayout, setCurrentLayout] = useState<string>("standard");
   const [currentLessonId, setCurrentLessonId] = useState<string>("");
+  const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [currentSlides, setCurrentSlides] = useState<ISlide[]>([]);
   const [allLessons, setAllLessons] = useState<ILesson[]>([]);
   const [currentCourseTitle, setCurrentCourseTitle] = useState<string>("");
@@ -72,13 +73,19 @@ export default function LearnPage() {
           setAllLessons((courseData.lessons as unknown as ILesson[]) || []);
 
           if (courseData.lessons && courseData.lessons.length > 0) {
-            const firstLesson = courseData.lessons[0];
-            setCurrentLessonId(firstLesson._id?.toString() || "");
-            setCurrentSlides((firstLesson.slides as unknown as ISlide[]) || []);
-            setMainCode(
-              (firstLesson.slides as unknown as ISlide[])?.[0]?.startingCode ||
-                ""
+            // Default to first lesson if no progress exists
+            let targetLesson = courseData.lessons[0];
+            let targetSlideIndex = 0;
+            let targetCode =
+              (courseData.lessons[0].slides as unknown as ISlide[])?.[0]
+                ?.startingCode || "";
+
+            setCurrentLessonId(targetLesson._id?.toString() || "");
+            setCurrentSlides(
+              (targetLesson.slides as unknown as ISlide[]) || []
             );
+            setCurrentSlideIndex(targetSlideIndex);
+            setMainCode(targetCode);
           }
         }
 
@@ -123,6 +130,10 @@ export default function LearnPage() {
                     studentId: userWithData.id,
                     courseId: courseId,
                     lessonId: firstLesson._id?.toString() || "",
+                    slideId:
+                      (
+                        firstLesson.slides as unknown as ISlide[]
+                      )?.[0]?._id?.toString() || "",
                     code:
                       (firstLesson.slides as unknown as ISlide[])?.[0]
                         ?.startingCode || "",
@@ -137,6 +148,50 @@ export default function LearnPage() {
                       courseId
                     );
                   setUserProgress(updatedProgress);
+                } else if (progress.progress.length > 0) {
+                  // Load the last accessed lesson and slide from progress
+                  const lastProgress =
+                    progress.progress[progress.progress.length - 1];
+                  if (lastProgress.lessonId) {
+                    const lessonId = lastProgress.lessonId.toString();
+                    const targetLesson = courseData.lessons?.find(
+                      (lesson) => lesson._id?.toString() === lessonId
+                    );
+
+                    if (targetLesson) {
+                      const slides =
+                        (targetLesson.slides as unknown as ISlide[]) || [];
+                      setCurrentLessonId(lessonId);
+                      setCurrentSlides(slides);
+
+                      // Find the slide index based on slideId if available
+                      if (lastProgress.slideId) {
+                        const slideIndex = slides.findIndex(
+                          (slide) =>
+                            slide._id?.toString() ===
+                            lastProgress.slideId?.toString()
+                        );
+                        if (slideIndex !== -1) {
+                          setCurrentSlideIndex(slideIndex);
+                          setMainCode(
+                            lastProgress.code ||
+                              slides[slideIndex]?.startingCode ||
+                              ""
+                          );
+                        } else {
+                          setCurrentSlideIndex(0);
+                          setMainCode(
+                            lastProgress.code || slides[0]?.startingCode || ""
+                          );
+                        }
+                      } else {
+                        setCurrentSlideIndex(0);
+                        setMainCode(
+                          lastProgress.code || slides[0]?.startingCode || ""
+                        );
+                      }
+                    }
+                  }
                 }
               } catch (progressError) {
                 console.warn("Could not fetch user progress:", progressError);
@@ -189,6 +244,57 @@ export default function LearnPage() {
     }
   }, [courseId, encryptedEmail]);
 
+  // Handle slide changes
+  const handleSlideChange = async (slideIndex: number) => {
+    setCurrentSlideIndex(slideIndex);
+
+    // Update progress for the current slide (only for students)
+    if (userData?.id !== "guest" && userData?.role === UserRole.STUDENT) {
+      try {
+        const currentSlide = currentSlides[slideIndex];
+        if (currentSlide) {
+          // Check if progress exists for this lesson
+          const existingProgress = userProgress?.progress.find(
+            (p: { lessonId?: { toString: () => string } }) =>
+              p.lessonId?.toString() === currentLessonId
+          );
+
+          if (existingProgress) {
+            // Update existing progress with new slide
+            await progressApi.updateTimeSpent(
+              existingProgress._id?.toString() || "",
+              {
+                slideId: currentSlide._id?.toString(),
+                timeSpent: existingProgress.timeSpent || 0,
+                lastAccessed: new Date().toISOString(),
+              }
+            );
+          } else {
+            // Create new progress for this lesson and slide
+            await progressApi.create({
+              studentId: userData.id,
+              courseId: courseId,
+              lessonId: currentLessonId,
+              slideId: currentSlide._id?.toString(),
+              code: mainCode,
+              timeSpent: 0,
+              completed: false,
+            });
+          }
+
+          // Refresh progress data
+          const updatedProgress = await progressApi.getByStudentAndCourse(
+            userData.id,
+            courseId
+          );
+          setUserProgress(updatedProgress);
+        }
+      } catch (error) {
+        console.error("Failed to update progress for slide:", error);
+      }
+    }
+  };
+
   // Handle lesson selection
   const handleSelectLesson = async (lessonId: string) => {
     setCurrentLessonId(lessonId);
@@ -198,10 +304,10 @@ export default function LearnPage() {
     );
 
     if (selectedLesson) {
-      setCurrentSlides((selectedLesson.slides as unknown as ISlide[]) || []);
-      setMainCode(
-        (selectedLesson.slides as unknown as ISlide[])?.[0]?.startingCode || ""
-      );
+      const slides = (selectedLesson.slides as unknown as ISlide[]) || [];
+      setCurrentSlides(slides);
+      setCurrentSlideIndex(0); // Reset to first slide when changing lessons
+      setMainCode(slides[0]?.startingCode || "");
 
       // Update progress for the selected lesson (only for students)
       if (userData?.id !== "guest" && userData?.role === UserRole.STUDENT) {
@@ -268,19 +374,24 @@ export default function LearnPage() {
     // Save to backend with user context (only if not guest and is student)
     if (userData?.id !== "guest" && userData?.role === UserRole.STUDENT) {
       try {
+        const currentSlide = currentSlides[currentSlideIndex];
+
         // Use existing progress data if available
         if (userProgress?.progress && userProgress.progress.length > 0) {
           // Update existing progress
-          const progressId = userProgress.progress.find(
+          const existingProgress = userProgress.progress.find(
             (p: {
               lessonId?: { toString: () => string };
               _id?: { toString: () => string };
             }) => p.lessonId?.toString() === currentLessonId
-          )?._id;
-          if (progressId) {
-            await progressApi.saveCode(progressId.toString(), {
+          );
+
+          if (existingProgress?._id) {
+            await progressApi.saveCode(existingProgress._id.toString(), {
               code: mainCode,
               lessonId: currentLessonId,
+              slideId: currentSlide?._id?.toString(),
+              timeSpent: existingProgress.timeSpent || 0,
             });
           } else {
             // Create new progress for this lesson if it doesn't exist
@@ -288,7 +399,10 @@ export default function LearnPage() {
               studentId: userData.id,
               courseId: courseId,
               lessonId: currentLessonId,
+              slideId: currentSlide?._id?.toString(),
               code: mainCode,
+              timeSpent: 0,
+              completed: false,
             });
 
             // Refresh progress data
@@ -304,7 +418,10 @@ export default function LearnPage() {
             studentId: userData.id,
             courseId: courseId,
             lessonId: currentLessonId,
+            slideId: currentSlide?._id?.toString(),
             code: mainCode,
+            timeSpent: 0,
+            completed: false,
           });
 
           // Refresh progress data
@@ -396,6 +513,8 @@ export default function LearnPage() {
                     currentLayout={currentLayout}
                     showAiAssistant={showAiAssistant}
                     onToggleAiAssistant={handleToggleAiAssistant}
+                    initialSlideIndex={currentSlideIndex}
+                    onSlideChange={handleSlideChange}
                   />
                 </div>
                 <IdeKeyboardShortcuts

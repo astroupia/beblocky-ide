@@ -30,6 +30,8 @@ export default function IdeWorkspace({
   currentLayout,
   showAiAssistant,
   onToggleAiAssistant,
+  initialSlideIndex = 0,
+  onSlideChange,
 }: {
   slides: any[]; // Changed from unknown[] to any[] to match expected types
   courseId: string;
@@ -41,6 +43,8 @@ export default function IdeWorkspace({
   currentLayout: string;
   showAiAssistant: boolean;
   onToggleAiAssistant: () => void;
+  initialSlideIndex?: number;
+  onSlideChange?: (slideIndex: number) => void;
 }) {
   const { theme } = useTheme();
   const isMobile = useMediaQuery("(max-width: 1000px)");
@@ -158,6 +162,8 @@ export default function IdeWorkspace({
                   lessons={lessons}
                   currentLessonId={currentLessonId}
                   onSelectLesson={onSelectLesson}
+                  initialSlideIndex={initialSlideIndex}
+                  onSlideChange={onSlideChange}
                 />
               </TabsContent>
 

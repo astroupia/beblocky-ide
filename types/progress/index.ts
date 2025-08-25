@@ -61,6 +61,7 @@ export interface IStudentProgress {
   progress: Array<{
     _id?: Types.ObjectId;
     lessonId?: Types.ObjectId;
+    slideId?: Types.ObjectId;
     code?: string;
     timeSpent?: number;
     completed?: boolean;

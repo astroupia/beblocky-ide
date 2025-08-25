@@ -225,29 +225,7 @@ export default function IdeMarkdownPreview({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             className="flex items-center justify-between p-2 border-b border-border/50 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                  <ContentIcon className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                    Preview
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Live markdown rendering
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-lg">
-              <Eye className="h-3 w-3 mr-1" />
-              <Sparkles className="h-3 w-3 mr-1" />
-              Live
-            </Badge>
-          </motion.div>
+          ></motion.div>
 
           {/* Content */}
           <ScrollArea className="h-[calc(100%-80px)] w-full">

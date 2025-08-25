@@ -34,14 +34,18 @@ export default function IdeSlides({
   lessons,
   currentLessonId,
   onSelectLesson,
+  initialSlideIndex = 0,
+  onSlideChange,
 }: {
   slides: Slide[];
   courseId: string;
   lessons?: any[];
   currentLessonId?: string;
   onSelectLesson?: (lessonId: string) => void;
+  initialSlideIndex?: number;
+  onSlideChange?: (slideIndex: number) => void;
 }) {
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(initialSlideIndex);
   const [activeTab, setActiveTab] = useState("content");
   const [copied, setCopied] = useState(false);
 
@@ -64,13 +68,17 @@ export default function IdeSlides({
 
   const goToNextSlide = () => {
     if (currentSlideIndex < slides.length - 1) {
-      setCurrentSlideIndex(currentSlideIndex + 1);
+      const newIndex = currentSlideIndex + 1;
+      setCurrentSlideIndex(newIndex);
+      onSlideChange?.(newIndex);
     }
   };
 
   const goToPreviousSlide = () => {
     if (currentSlideIndex > 0) {
-      setCurrentSlideIndex(currentSlideIndex - 1);
+      const newIndex = currentSlideIndex - 1;
+      setCurrentSlideIndex(newIndex);
+      onSlideChange?.(newIndex);
     }
   };
 
@@ -204,44 +212,6 @@ export default function IdeSlides({
                         {currentSlide.startingCode}
                       </pre>
                     </div>
-                  </div>
-                )}
-
-                {/* Code Blocks from Content */}
-                {codeBlocks.length > 0 && (
-                  <div className="space-y-3 min-w-0 max-w-full">
-                    <h4 className="text-md font-medium text-muted-foreground flex items-center gap-2">
-                      <Code size={16} />
-                      Code Examples from Content
-                    </h4>
-                    {codeBlocks.map((code, index) => (
-                      <div
-                        key={index}
-                        className="relative group min-w-0 max-w-full"
-                      >
-                        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(code);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            }}
-                          >
-                            {copied ? (
-                              <Check size={16} className="text-green-500" />
-                            ) : (
-                              <Copy size={16} />
-                            )}
-                          </Button>
-                        </div>
-                        <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono max-w-full">
-                          {code}
-                        </pre>
-                      </div>
-                    ))}
                   </div>
                 )}
 
