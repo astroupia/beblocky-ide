@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -28,6 +29,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSettings } from "./context/settings-context";
 import { useToast } from "@/hooks/use-toast";
+import { LoadingButton } from "@/components/ui/loading-button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 export default function IdeToolbar({
   onRunCode,
@@ -48,6 +51,18 @@ export default function IdeToolbar({
 }) {
   const { openSettings } = useSettings();
   const { toast } = useToast();
+
+  // Loading states
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isAiAssistantLoading, setIsAiAssistantLoading] = useState(false);
+
+  // Dialog states
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [aiAssistantDialogOpen, setAiAssistantDialogOpen] = useState(false);
 
   // Function to extract HTML, CSS, and JavaScript from the main code
   const extractCodeParts = (code: string) => {
@@ -84,7 +99,8 @@ export default function IdeToolbar({
   };
 
   // Function to download code as zip file
-  const handleDownload = async () => {
+  const performDownload = async () => {
+    setIsDownloading(true);
     try {
       // Import JSZip dynamically to avoid SSR issues
       const JSZip = (await import("jszip")).default;
@@ -129,16 +145,26 @@ ${html}
       });
     } catch (error) {
       console.error("Error creating zip file:", error);
-      toast({
-        title: "Download Failed",
-        description: "Failed to create download file. Please try again.",
-        variant: "destructive",
-      });
+      setErrorMessage("Failed to create download file. Please try again.");
+      setErrorDialogOpen(true);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
-  // Function to handle save with toast notifications
+  // Function to show download confirmation dialog
+  const showDownloadConfirmation = () => {
+    setDownloadDialogOpen(true);
+  };
+
+  // Function to show AI Assistant confirmation dialog
+  const showAiAssistantConfirmation = () => {
+    setAiAssistantDialogOpen(true);
+  };
+
+  // Function to handle save with loading state and error handling
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       await onSaveCode();
       toast({
@@ -146,12 +172,16 @@ ${html}
         description: "Your code has been saved successfully.",
       });
     } catch (error) {
-      toast({
-        title: "Save Failed",
-        description: "Failed to save your code. Please try again.",
-        variant: "destructive",
-      });
+      setErrorMessage("Failed to save your code. Please try again.");
+      setErrorDialogOpen(true);
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  // Function to show save confirmation dialog
+  const showSaveConfirmation = () => {
+    setSaveDialogOpen(true);
   };
 
   return (
@@ -159,15 +189,17 @@ ${html}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
+            <LoadingButton
               variant="outline"
               size="sm"
-              onClick={handleSave}
+              onClick={showSaveConfirmation}
+              loading={isSaving}
+              loadingText="Saving..."
               className="gap-1"
             >
               <Save size={16} />
               <span>Save</span>
-            </Button>
+            </LoadingButton>
           </TooltipTrigger>
           <TooltipContent>
             <p>Save your code (Ctrl+S)</p>
@@ -176,15 +208,17 @@ ${html}
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
+            <LoadingButton
               variant="outline"
               size="sm"
-              onClick={handleDownload}
+              onClick={showDownloadConfirmation}
+              loading={isDownloading}
+              loadingText="Downloading..."
               className="gap-1"
             >
               <Download size={16} />
               <span>Download</span>
-            </Button>
+            </LoadingButton>
           </TooltipTrigger>
           <TooltipContent>
             <p>Download your code as HTML, CSS, and JavaScript files</p>
@@ -194,15 +228,17 @@ ${html}
         <div className="ml-auto flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
+              <LoadingButton
                 variant={showAiAssistant ? "default" : "outline"}
                 size="sm"
-                onClick={onToggleAiAssistant}
+                onClick={showAiAssistantConfirmation}
+                loading={isAiAssistantLoading}
+                loadingText={showAiAssistant ? "Disabling..." : "Enabling..."}
                 className="gap-1"
               >
                 <Bot size={16} />
                 <span>AI Assistant</span>
-              </Button>
+              </LoadingButton>
             </TooltipTrigger>
             <TooltipContent>
               <p>Toggle AI Assistant</p>
@@ -257,6 +293,65 @@ ${html}
           </DropdownMenu>
         </div>
       </TooltipProvider>
+
+      {/* Save Confirmation Dialog */}
+      <ConfirmationDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        type="confirm"
+        title="Save Code"
+        description="Are you sure you want to save your current code? This will update your progress."
+        confirmText="Save"
+        cancelText="Cancel"
+        onConfirm={handleSave}
+        loading={isSaving}
+      />
+
+      {/* Download Confirmation Dialog */}
+      <ConfirmationDialog
+        open={downloadDialogOpen}
+        onOpenChange={setDownloadDialogOpen}
+        type="info"
+        title="Download Project"
+        description="Your project will be downloaded as a ZIP file containing HTML, CSS, and JavaScript files."
+        confirmText="Download"
+        onConfirm={performDownload}
+        loading={isDownloading}
+      />
+
+      {/* AI Assistant Confirmation Dialog */}
+      <ConfirmationDialog
+        open={aiAssistantDialogOpen}
+        onOpenChange={setAiAssistantDialogOpen}
+        type="info"
+        title={showAiAssistant ? "Disable AI Assistant" : "Enable AI Assistant"}
+        description={
+          showAiAssistant
+            ? "Are you sure you want to disable the AI Assistant? You'll lose access to AI-powered code suggestions and help."
+            : "Enable the AI Assistant to get intelligent code suggestions, explanations, and help with your coding tasks."
+        }
+        confirmText={showAiAssistant ? "Disable" : "Enable"}
+        cancelText="Cancel"
+        onConfirm={async () => {
+          setIsAiAssistantLoading(true);
+          try {
+            await onToggleAiAssistant();
+          } finally {
+            setIsAiAssistantLoading(false);
+          }
+        }}
+        loading={isAiAssistantLoading}
+      />
+
+      {/* Error Dialog */}
+      <ConfirmationDialog
+        open={errorDialogOpen}
+        onOpenChange={setErrorDialogOpen}
+        type="error"
+        title="Error"
+        description={errorMessage}
+        confirmText="OK"
+      />
     </div>
   );
 }
