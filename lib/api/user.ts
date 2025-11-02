@@ -1,6 +1,8 @@
 import { IUser } from "@/types/user";
+import { decryptEmail } from "@/lib/utils";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.beblocky.com";
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -37,7 +39,7 @@ async function apiCall<T>(
 export const userApi = {
   getById: (id: string) => apiCall<IUser>(`/users/${id}`),
   getByEmail: (email: string) =>
-    apiCall<IUser>(`/users/by-email?email=${encodeURIComponent(email)}`),
+    apiCall<IUser>(`/users/by-email?email=${decryptEmail(email)}`),
   update: (id: string, data: Record<string, unknown>) =>
     apiCall<IUser>(`/users/${id}`, {
       method: "PUT",

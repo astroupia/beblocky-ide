@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.beblocky.com";
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -33,8 +34,16 @@ async function apiCall<T>(
 
 // Student API calls
 export const studentApi = {
-  getStreak: (id: string) =>
-    apiCall<{ streak: number }>(`/students/${id}/streak`),
+  // Get student by email
+  getByEmail: (email: string) =>
+    apiCall<any>(`/students/email/${encodeURIComponent(email)}`),
+
+  // Get student by user ID
+  getByUserId: (userId: string) => apiCall<any>(`/students/user/${userId}`),
+
+  getStreak: (id: string) => apiCall<number>(`/students/${id}/streak`),
+  getCodingStreak: (id: string) =>
+    apiCall<{ streak: number }>(`/students/${id}/coding-streak`),
   updateActivity: (id: string, data: Record<string, unknown>) =>
     apiCall<Record<string, unknown>>(`/students/${id}/activity`, {
       method: "PATCH",

@@ -4,6 +4,8 @@ export { slideApi } from "./slide";
 export { userApi } from "./user";
 export { progressApi } from "./progress";
 export { studentApi } from "./student";
+export { aiConversationApi } from "./ai-conversation";
+export { codeAnalysisApi } from "./code-analysis";
 
 import { courseApi } from "./course";
 import { lessonApi } from "./lesson";

@@ -2,7 +2,8 @@ import { ICourse, ILesson, ISlide } from "@/types";
 import { IProgress, IStudentProgress } from "@/types/progress";
 import { IUser } from "@/types/user";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.beblocky.com";
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -113,45 +114,8 @@ export const userApi = {
     }),
 };
 
-// Progress API calls
-export const progressApi = {
-  create: (data: Record<string, unknown>) =>
-    apiCall<IProgress>("/progress", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  getAll: () => apiCall<IProgress[]>("/progress"),
-  getById: (id: string) => apiCall<IProgress>(`/progress/${id}`),
-  getByStudent: (studentId: string) =>
-    apiCall<IProgress[]>(`/progress/student/${studentId}`),
-  getByCourse: (courseId: string) =>
-    apiCall<IProgress[]>(`/progress/course/${courseId}`),
-  getByStudentAndCourse: (studentId: string, courseId: string) =>
-    apiCall<IStudentProgress>(`/progress/${studentId}/${courseId}`),
-  getCompletionPercentage: (studentId: string, courseId: string) =>
-    apiCall<{ percentage: number }>(
-      `/progress/${studentId}/${courseId}/percentage`
-    ),
-  completeLesson: (id: string, data: Record<string, unknown>) =>
-    apiCall<IProgress>(`/progress/${id}/complete-lesson`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  saveCode: (id: string, data: Record<string, unknown>) =>
-    apiCall<IProgress>(`/progress/${id}/save-code`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  updateTimeSpent: (id: string, data: Record<string, unknown>) =>
-    apiCall<IProgress>(`/progress/${id}/time-spent`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  delete: (id: string) =>
-    apiCall<void>(`/progress/${id}`, {
-      method: "DELETE",
-    }),
-};
+// Progress API calls - now exported from dedicated progress.ts file
+// Import from "@/lib/api/progress" instead
 
 // Student API calls
 export const studentApi = {

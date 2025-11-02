@@ -1,70 +1,133 @@
 import { Types } from "mongoose";
 
+// Main progress interface matching the API documentation structure
 export interface IProgress {
-  userId: string; // String ID from better-auth
+  _id?: string;
+  studentId: Types.ObjectId;
   courseId: Types.ObjectId;
-  lessonId: Types.ObjectId;
-  slideId: Types.ObjectId;
-  isCompleted: boolean;
-  timeSpent: number; // in minutes
-  codeAttempts: number;
-  lastAttemptAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  completedLessons: Map<
+    string,
+    {
+      isCompleted: boolean;
+      completedAt: Date;
+      timeSpent: number;
+    }
+  >;
+  completionPercentage: number;
+  timeSpent: Map<string, number>; // weekKey -> total minutes
+  coinsEarned: number;
+  lessonCode: Map<
+    string,
+    {
+      language: string;
+      code: string;
+      timestamp: Date;
+    }
+  >;
+  currentLesson?: Types.ObjectId;
+  startedAt: Date;
+  lastCompletedAt?: Date;
+  isActive: boolean;
+  lastCalculatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
+// Progress creation DTO
 export interface ICreateProgressDto {
+  studentId: string;
   courseId: string;
-  lessonId: string;
-  slideId: string;
-  isCompleted?: boolean;
-  timeSpent?: number;
-  codeAttempts?: number;
+  currentLesson?: string;
 }
 
+// Progress update DTO
 export interface IUpdateProgressDto {
-  isCompleted?: boolean;
-  timeSpent?: number;
-  codeAttempts?: number;
+  completionPercentage?: number;
+  coinsEarned?: number;
+  isActive?: boolean;
+  currentLesson?: string;
 }
 
+// Lesson completion DTO
 export interface ICompleteLessonDto {
   lessonId: string;
   timeSpent: number;
 }
 
+// Code saving DTO
 export interface ISaveCodeDto {
-  courseId: string;
   lessonId: string;
-  slideId: string;
-  code: string;
   language: string;
+  code: string;
 }
 
-export interface IProgressResponse {
-  id: string;
-  userId: string;
-  courseId: string;
-  lessonId: string;
-  slideId: string;
-  isCompleted: boolean;
-  timeSpent: number;
-  codeAttempts: number;
-  lastAttemptAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
+// Time spent update DTO
+export interface IUpdateTimeSpentDto {
+  minutes: number;
 }
 
+// Completion percentage response
+export interface ICompletionPercentageResponse {
+  percentage: number;
+  completedLessons: number;
+  totalLessons: number;
+}
+
+// Student progress summary (for getByStudentAndCourse)
 export interface IStudentProgress {
+  _id?: string;
   studentId: string;
   courseId: string;
-  progress: Array<{
-    _id?: Types.ObjectId;
-    lessonId?: Types.ObjectId;
-    slideId?: Types.ObjectId;
+  completionPercentage: number;
+  completedLessons: number;
+  totalLessons: number;
+  coinsEarned: number;
+  timeSpent: number;
+  currentLesson?: string;
+  startedAt: Date;
+  lastCompletedAt?: Date;
+  isActive: boolean;
+  // Legacy support for existing code structure
+  progress?: Array<{
+    _id?: string;
+    lessonId?: string;
+    slideId?: string;
     code?: string;
     timeSpent?: number;
     completed?: boolean;
     lastAccessed?: string;
   }>;
+}
+
+// Progress response wrapper
+export interface IProgressResponse {
+  _id: string;
+  studentId: string;
+  courseId: string;
+  completedLessons: Record<
+    string,
+    {
+      isCompleted: boolean;
+      completedAt: string;
+      timeSpent: number;
+    }
+  >;
+  completionPercentage: number;
+  timeSpent: Record<string, number>;
+  coinsEarned: number;
+  lessonCode: Record<
+    string,
+    {
+      language: string;
+      code: string;
+      timestamp: string;
+    }
+  >;
+  currentLesson?: string;
+  startedAt: string;
+  lastCompletedAt?: string;
+  isActive: boolean;
+  lastCalculatedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
