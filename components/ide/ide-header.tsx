@@ -15,7 +15,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Coins, Moon, Settings, Sun } from "lucide-react";
+import { Coins, Moon, Settings, Sun, Flame } from "lucide-react";
+import { useEffect, useState } from "react";
+import { studentApi } from "@/lib/api/student";
 import Logo from "@/public/assets/images/logo.png";
 
 interface IdeHeaderProps {
@@ -27,21 +29,44 @@ interface IdeHeaderProps {
     initials?: string;
     role?: UserRole;
   };
+  studentId?: string;
   onSettingsClick?: () => void;
 }
 
 export default function IdeHeader({
   courseTitle,
   userData,
+  studentId,
   onSettingsClick,
 }: IdeHeaderProps) {
   const { user } = useAuthContext();
   const { theme, setTheme } = useTheme();
   const { coins } = useCoin();
   const { openSettings } = useSettings();
+  const [streak, setStreak] = useState(0);
 
   // Check if user should see coins (only student roles)
   const shouldShowCoins = userData?.role === UserRole.STUDENT;
+  console.log("studentId and shouldShowCoins", studentId, shouldShowCoins);
+
+  // Load coding streak
+  useEffect(() => {
+    if (shouldShowCoins && studentId) {
+      studentApi
+        .getStreak(studentId)
+        .then((data) => {
+          // Handle both number response and object response
+          const streakValue =
+            typeof data === "number" ? data : (data as any)?.streak ?? 0;
+          console.log("Streak value received:", streakValue);
+          setStreak(streakValue || 0);
+        })
+        .catch((error) => {
+          console.error("Failed to load coding streak:", error);
+          setStreak(0);
+        });
+    }
+  }, [shouldShowCoins, studentId]);
 
   // Determine navigation URL based on user role
   const getNavigationUrl = () => {
@@ -80,19 +105,34 @@ export default function IdeHeader({
 
       <div className="flex items-center gap-2">
         {shouldShowCoins && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300 px-3 py-1 rounded-full">
-                  <span className="font-medium">{coins.toFixed(0)}</span>
-                  <Coins size={16} className="text-amber-500" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Your learning coins</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 bg-amber-100 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300 px-3 py-1 rounded-full">
+                    <span className="font-medium">{coins.toFixed(0)}</span>
+                    <Coins size={16} className="text-amber-500" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Your learning coins</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-300 px-3 py-1 rounded-full">
+                    <Flame size={16} className="text-orange-500" />
+                    <span className="font-medium">{streak}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Your coding streak</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
         )}
 
         <Button
@@ -117,17 +157,17 @@ export default function IdeHeader({
           <Settings className="h-5 w-5" />
         </Button>
 
-        <Button
-          variant="outline"
-          className="ml-2 rounded-full font-medium flex items-center gap-2"
-        >
+        <div className="ml-2 rounded-full font-medium flex items-center gap-2">
           {userData?.initials ? (
             <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
               {userData.initials}
             </div>
           ) : null}
-          {userData?.name || user?.displayName || "User"}
-        </Button>
+          {/* Show name only on screens >= 640px (sm) */}
+          <span className="hidden sm:inline">
+            {userData?.name?.split(" ")[0] || "User"}
+          </span>
+        </div>
       </div>
     </header>
   );
