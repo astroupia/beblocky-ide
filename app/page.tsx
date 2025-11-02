@@ -1,8 +1,11 @@
+"use client";
+
 import { redirect } from "next/navigation";
-import { encryptEmail } from "@/lib/utils";
+import { useParams } from "next/navigation";
 
 export default function HomePage() {
+  const params = useParams();
+  const email = params.email as string;
   // Redirect to the learn page with a default course and guest user
-  const guestEmail = encryptEmail("guest");
-  redirect(`/courses/1/learn/user/${guestEmail}`);
+  redirect(`/courses/1/learn/user/${email}`);
 }
