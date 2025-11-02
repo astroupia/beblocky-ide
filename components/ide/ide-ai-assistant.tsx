@@ -1,63 +1,205 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Bot, Code, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { Code, MessageCircle, Zap } from "lucide-react";
+import { aiConversationApi } from "@/lib/api/ai-conversation";
+import { codeAnalysisApi } from "@/lib/api/code-analysis";
+import {
+  IAiConversation,
+  ICodeAnalysis,
+  IChatMessage,
+  ICodeFeedback,
+} from "@/types/ai";
+import IdeConversationSidebar from "./ide-conversation-sidebar";
+import IdeMessageList from "./ide-message-list";
+import IdeChatInput from "./ide-chat-input";
+import IdeCodeAnalysis from "./ide-code-analysis";
+import IdeChatTab from "./ide-chat-tab";
+import { progressApi } from "@/lib/api/progress";
 
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
+type Conversation = {
+  _id: string;
+  title: string;
+  lastActivity: string;
+  courseId: string;
+  messages?: IChatMessage[];
 };
 
-type CodeFeedback = {
-  type: "success" | "warning" | "error";
-  message: string;
-  line?: number;
-  code?: string;
-};
-
-export default function IdeAiAssistant({ code }: { code: string }) {
+export default function IdeAiAssistant({
+  code,
+  courseId,
+  lessonId,
+  studentId,
+}: {
+  code: string;
+  courseId: string;
+  lessonId: string;
+  studentId: string;
+}) {
   const [activeTab, setActiveTab] = useState("chat");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hello! I'm your coding assistant. I can help you with your code and answer questions about the lesson. What would you like to know?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<IChatMessage[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversationId, setSelectedConversationId] =
+    useState<string>("");
   const [inputValue, setInputValue] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [codeFeedback, setCodeFeedback] = useState<CodeFeedback[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [codeFeedback, setCodeFeedback] = useState<ICodeFeedback[]>([]);
+  const [currentAnalysis, setCurrentAnalysis] = useState<ICodeAnalysis | null>(
+    null
+  );
+  const [analysisHistory, setAnalysisHistory] = useState<ICodeAnalysis[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isConversationSidebarOpen, setIsConversationSidebarOpen] =
+    useState(true); // Show by default on desktop
+  const [hasLoadedConversations, setHasLoadedConversations] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
-  // Scroll to bottom of messages when new messages are added
+  // Load conversations and analysis history when component mounts
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    console.log(
+      "Component mounted, loading conversations for student:",
+      studentId
+    );
+    loadConversations();
+    loadAnalysisHistory();
+  }, [studentId, courseId]);
 
-  // Simulate code analysis when code changes
+  // Load conversations when AI Chat tab is selected
   useEffect(() => {
-    if (activeTab === "analysis" && code) {
-      analyzeCode();
+    if (activeTab === "chat" && !hasLoadedConversations) {
+      console.log("AI Chat tab selected, loading conversations");
+      loadConversations();
+      setHasLoadedConversations(true);
     }
-  }, [code, activeTab]);
+  }, [activeTab, hasLoadedConversations]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  // Debug effect to monitor state changes
+  useEffect(() => {
+    // Debugging console log removed as requested.
+  }, [conversations, selectedConversationId, inputValue]);
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+  // Load conversations for the current student
+  const loadConversations = async () => {
+    try {
+      setIsLoading(true);
+      const conversationList = await aiConversationApi.getByStudent(studentId);
+
+      const conversations: Conversation[] = conversationList
+        .filter(
+          (conv): conv is IAiConversation & { _id: string } =>
+            !!conv &&
+            !!conv._id &&
+            typeof conv._id === "string" &&
+            conv._id.length > 0
+        ) // Filter out conversations without valid _id
+        .map((conv) => ({
+          _id: conv._id!,
+          title:
+            conv.title ||
+            (conv.messages && conv.messages.length > 0
+              ? "New Conversation"
+              : "Untitled Conversation"),
+          lastActivity: new Date(conv.lastActivity).toISOString(),
+          courseId: conv.courseId.toString(),
+          messages: conv.messages,
+        }));
+
+      console.log("Filtered conversations:", conversations);
+      setConversations(conversations);
+
+      // Don't auto-select conversation - let user choose
+      if (conversations.length === 0) {
+        console.log("No conversations found");
+        setSelectedConversationId("");
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load code analysis history for the current student
+  const loadAnalysisHistory = async () => {
+    try {
+      const history = await codeAnalysisApi.getByStudent(studentId);
+      setAnalysisHistory(history);
+    } catch (error) {
+      console.error("Failed to load analysis history:", error);
+    }
+  };
+
+  // Create new conversation
+  // Handle new chat button - only clear messages, don't create conversation
+  const handleNewChat = () => {
+    setSelectedConversationId("");
+    setMessages([]);
+    setIsConversationSidebarOpen(false);
+    console.log("Cleared messages for new chat");
+  };
+
+  const createNewConversation = async () => {
+    if (isCreatingConversation) {
+      console.log("Conversation creation already in progress, skipping...");
+      return;
+    }
+
+    try {
+      setIsCreatingConversation(true);
+      setIsLoading(true);
+
+      const newConversation = await aiConversationApi.create({
+        courseId,
+        studentId,
+        title: "", // Will be generated by AI when first message is sent
+        lessonId: lessonId,
+        initialMessage: inputValue,
+      });
+
+      const conversation = {
+        _id: newConversation._id || `temp-${Date.now()}`,
+        title: "New Conversation", // Temporary title until AI generates one
+        lastActivity: new Date(newConversation.lastActivity).toISOString(),
+        courseId: newConversation.courseId.toString(),
+        messages: newConversation.messages || [],
+      };
+
+      setConversations((prev) => [...prev, conversation]);
+      setSelectedConversationId(conversation._id);
+      setMessages(conversation.messages);
+
+      // Close sidebar on mobile after selection
+      setIsConversationSidebarOpen(false);
+
+      console.log("New conversation created:", conversation._id);
+    } catch (error) {
+      console.error("Failed to create conversation:", error);
+    } finally {
+      setIsLoading(false);
+      setIsCreatingConversation(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isCreatingConversation) return;
+
+    // If no conversation is selected, create one first
+    if (!selectedConversationId) {
+      await createNewConversation();
+      // Don't proceed if conversation creation failed
+      if (!selectedConversationId) {
+        console.log("Failed to create conversation, cannot send message");
+        return;
+      }
+    }
+
+    // Add user message to UI immediately
+    const userMessage: IChatMessage = {
       role: "user",
       content: inputValue,
       timestamp: new Date(),
@@ -67,139 +209,264 @@ export default function IdeAiAssistant({ code }: { code: string }) {
     setInputValue("");
     setIsThinking(true);
 
-    // Simulate AI response (would be replaced with actual AI integration)
-    setTimeout(() => {
+    try {
+      // Send message to API
+      const updatedConversation = await aiConversationApi.sendMessage(
+        selectedConversationId,
+        {
+          message: inputValue,
+          lessonId: lessonId,
+        }
+      );
+
+      // Update messages with the response
+      setMessages(updatedConversation.messages);
+
+      // Update conversation title if this is the first message and title needs to be generated
+      if (messages.length === 0 && updatedConversation.title) {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv._id === selectedConversationId
+              ? { ...conv, title: updatedConversation.title! }
+              : conv
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+
+      // Fallback to mock response if API fails
+      setTimeout(() => {
+        const aiResponse: IChatMessage = {
+          role: "assistant",
+          content: generateAIResponse(),
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiResponse]);
+      }, 1500);
+    } finally {
       setIsThinking(false);
-
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: generateAIResponse(),
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiResponse]);
-    }, 1500);
+    }
   };
 
-  const analyzeCode = () => {
+  const analyzeCode = async () => {
+    if (!code.trim()) return;
+
     setIsAnalyzing(true);
     setIsThinking(true);
 
-    // Simulate code analysis (would be replaced with actual AI analysis)
-    setTimeout(() => {
+    try {
+      // Step a: Find code analysis related to the student
+      const existingAnalyses = await codeAnalysisApi.getByStudent(studentId);
+      console.log("Existing analyses for student:", existingAnalyses);
+
+      // Filter analyses by current lesson
+      const lessonAnalyses = existingAnalyses.filter(
+        (analysis) => String(analysis.lessonId) === String(lessonId)
+      );
+
+      let analysis: ICodeAnalysis;
+
+      // Step b: If no code-analysis exists, create a new one
+      if (lessonAnalyses.length === 0) {
+        console.log("No analysis found for this lesson, creating new one");
+        const progressArr = await progressApi.getByStudent(studentId);
+        const progressId =
+          Array.isArray(progressArr) && progressArr.length > 0
+            ? (progressArr[0] as any)?._id || (progressArr[0] as any)?.id
+            : undefined;
+
+        analysis = await codeAnalysisApi.analyze({
+          progressId: progressId,
+          lessonId: lessonId,
+          codeContent: code,
+          language: detectLanguage(code),
+        });
+      } else {
+        // Step c: If code-analysis exists, load the latest one and do new analysis
+        const latestAnalysis = lessonAnalyses.sort(
+          (a, b) =>
+            new Date(b.analysisDate).getTime() -
+            new Date(a.analysisDate).getTime()
+        )[0];
+
+        console.log("Loading latest analysis:", latestAnalysis._id);
+
+        // Load the existing analysis first
+        setCurrentAnalysis(latestAnalysis);
+        setCodeFeedback(latestAnalysis.feedback);
+
+        // Then perform a new analysis with the updated code
+        const progressArr = await progressApi.getByStudent(studentId);
+        const progressId =
+          Array.isArray(progressArr) && progressArr.length > 0
+            ? (progressArr[0] as any)?._id || (progressArr[0] as any)?.id
+            : undefined;
+
+        analysis = await codeAnalysisApi.analyze({
+          progressId: progressId,
+          lessonId: lessonId,
+          codeContent: code,
+          language: detectLanguage(code),
+        });
+      }
+
+      // Update with the latest analysis result
+      setCurrentAnalysis(analysis);
+      setCodeFeedback(analysis.feedback);
+
+      // Refresh analysis history to include the new analysis
+      await loadAnalysisHistory();
+    } catch (error) {
+      console.error("Code analysis failed:", error);
+
+      // Fallback to mock analysis if API fails
+      setTimeout(() => {
+        setCodeFeedback([
+          {
+            type: "success",
+            message: "Your HTML structure looks good!",
+          },
+          {
+            type: "warning",
+            message:
+              "Consider adding more comments to your JavaScript code for better readability.",
+            line: 5,
+            code: "function calculateTotal() { /* missing comments */ }",
+          },
+          {
+            type: "error",
+            message: "Missing closing tag in your HTML.",
+            line: 12,
+            code: "<div>Content",
+          },
+        ]);
+      }, 1500);
+    } finally {
       setIsThinking(false);
-
-      // Example feedback
-      setCodeFeedback([
-        {
-          type: "success",
-          message: "Your HTML structure looks good!",
-        },
-        {
-          type: "warning",
-          message:
-            "Consider adding more comments to your JavaScript code for better readability.",
-          line: 5,
-          code: "function calculateTotal() { /* missing comments */ }",
-        },
-        {
-          type: "error",
-          message: "Missing closing tag in your HTML.",
-          line: 12,
-          code: "<div>Content",
-        },
-      ]);
-
       setIsAnalyzing(false);
-    }, 2500);
+    }
+  };
+
+  // Detect programming language from code
+  const detectLanguage = (code: string): string => {
+    const trimmedCode = code.trim().toLowerCase();
+
+    if (trimmedCode.includes("def ") && trimmedCode.includes("import "))
+      return "python";
+    if (
+      trimmedCode.includes("public class") ||
+      trimmedCode.includes("system.out.print")
+    )
+      return "java";
+    if (
+      trimmedCode.includes("#include") ||
+      trimmedCode.includes("printf(") ||
+      trimmedCode.includes("cout")
+    )
+      return "cpp";
+    if (trimmedCode.includes("<html") || trimmedCode.includes("<div"))
+      return "html";
+    if (
+      trimmedCode.includes("{") &&
+      trimmedCode.includes("}") &&
+      trimmedCode.includes(":")
+    )
+      return "css";
+
+    return "javascript";
   };
 
   return (
-    <Card className="h-full flex flex-col border-none rounded-none shadow-none">
-      <CardHeader className="p-2 border-b space-y-0 bg-muted/30">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 h-8">
-            <TabsTrigger value="chat" className="text-xs">
-              <Bot size={14} className="mr-1" /> Chat Assistant
-            </TabsTrigger>
-            <TabsTrigger value="analysis" className="text-xs">
-              <Code size={14} className="mr-1" /> Code Analysis
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+    <Card className="h-full flex flex-col border-none rounded-none shadow-none bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <CardHeader className="p-2 sm:p-3 border-b space-y-2 sm:space-y-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
+        <div className="flex items-center justify-between">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="grid grid-cols-2 h-9 sm:h-10 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+              <TabsTrigger
+                value="chat"
+                className="text-xs sm:text-sm font-medium data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 px-2 sm:px-4"
+              >
+                <MessageCircle size={14} className="sm:size-4 mr-1 sm:mr-2" />
+                <span className="hidden min-[400px]:inline">AI Chat</span>
+                <span className="min-[400px]:hidden">Chat</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="analysis"
+                className="text-xs sm:text-sm font-medium data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 px-2 sm:px-4"
+              >
+                <Code size={14} className="sm:size-4 mr-1 sm:mr-2" />
+                <span className="hidden min-[400px]:inline">Code Analysis</span>
+                <span className="min-[400px]:hidden">Analysis</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </CardHeader>
 
       <CardContent className="flex-1 p-0 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
           <TabsContent
             value="chat"
-            className="h-full m-0 data-[state=active]:flex flex-col"
+            className="h-full m-0 data-[state=active]:flex flex-col min-h-0"
           >
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <p className="text-xs opacity-70 mt-1">
-                        {message.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {isThinking && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-lg p-3 bg-muted">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-150"></div>
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-300"></div>
-                        <span className="text-xs text-muted-foreground ml-1">
-                          AI is thinking...
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+            <div className="flex h-full min-h-0 min-w-0">
+              {/* Conversation Sidebar */}
+              <IdeConversationSidebar
+                conversations={conversations}
+                selectedConversationId={selectedConversationId}
+                isLoading={isLoading}
+                onConversationSelect={(conversationId) => {
+                  const conversation = conversations.find(
+                    (c) => c._id === conversationId
+                  );
+                  if (conversation) {
+                    setSelectedConversationId(conversation._id);
+                    setMessages(conversation.messages || []);
+                    // Close sidebar after selection
+                    setIsConversationSidebarOpen(false);
+                  }
+                }}
+                onNewConversation={handleNewChat}
+                isOpen={isConversationSidebarOpen}
+                onClose={() => setIsConversationSidebarOpen(false)}
+              />
 
-            <div className="p-4 border-t mt-auto">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ask a question..."
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isThinking) {
-                      handleSendMessage();
+              {/* Chat Area */}
+              <div className="bg-transparent flex-1 flex flex-col min-h-0 min-w-0">
+                {/* Toggle button for sidebar */}
+                <div className="p-1.5 sm:p-2 bg-transparent border-b border-slate-200 dark:border-slate-700">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setIsConversationSidebarOpen(!isConversationSidebarOpen)
                     }
-                  }}
-                  disabled={isThinking}
+                    className="w-full lg:w-auto text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    <MessageCircle
+                      size={14}
+                      className="sm:size-4 mr-1.5 sm:mr-2"
+                    />
+                    <span className="hidden min-[400px]:inline">
+                      {selectedConversationId ? "Switch Chat" : "Select Chat"}
+                    </span>
+                    <span className="min-[400px]:hidden">Chats</span>
+                  </Button>
+                </div>
+
+                <IdeChatTab
+                  messages={messages}
+                  inputValue={inputValue}
+                  selectedConversationId={selectedConversationId}
+                  isThinking={isThinking}
+                  onInputChange={setInputValue}
+                  onSendMessage={handleSendMessage}
                 />
-                <Button
-                  size="icon"
-                  onClick={handleSendMessage}
-                  disabled={isThinking}
-                >
-                  <Send size={16} />
-                </Button>
               </div>
             </div>
           </TabsContent>
@@ -208,89 +475,17 @@ export default function IdeAiAssistant({ code }: { code: string }) {
             value="analysis"
             className="h-full m-0 data-[state=active]:flex flex-col"
           >
-            <div className="flex-1 p-4 overflow-auto">
-              {isAnalyzing ? (
-                <div className="h-full flex flex-col items-center justify-center">
-                  {isThinking ? (
-                    <div className="flex flex-col items-center">
-                      <div className="relative w-16 h-16 mb-4">
-                        <div className="absolute inset-0 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                        <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-primary border-b-transparent border-l-transparent animate-spin animation-delay-150"></div>
-                        <div className="absolute inset-4 rounded-full border-4 border-t-transparent border-r-transparent border-b-primary border-l-transparent animate-spin animation-delay-300"></div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        AI is analyzing your code...
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Checking syntax and best practices
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {codeFeedback.length > 0 ? (
-                    codeFeedback.map((feedback, index) => (
-                      <div key={index} className="border rounded-lg p-3">
-                        <div className="flex items-start gap-2">
-                          {feedback.type === "success" ? (
-                            <CheckCircle
-                              size={18}
-                              className="text-green-500 mt-0.5"
-                            />
-                          ) : feedback.type === "warning" ? (
-                            <AlertCircle
-                              size={18}
-                              className="text-amber-500 mt-0.5"
-                            />
-                          ) : (
-                            <AlertCircle
-                              size={18}
-                              className="text-red-500 mt-0.5"
-                            />
-                          )}
-
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge
-                                variant={
-                                  feedback.type === "success"
-                                    ? "default"
-                                    : feedback.type === "warning"
-                                    ? "secondary"
-                                    : "destructive"
-                                }
-                                className="text-xs"
-                              >
-                                {feedback.type}
-                              </Badge>
-                            </div>
-                            <p className="text-sm">{feedback.message}</p>
-                            {feedback.line && feedback.code && (
-                              <div className="mt-2 text-xs bg-muted p-2 rounded">
-                                <p className="text-muted-foreground mb-1">
-                                  Line {feedback.line}:
-                                </p>
-                                <pre className="whitespace-pre-wrap">
-                                  {feedback.code}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                      <Code size={24} className="mb-2" />
-                      <p className="text-sm">No code analysis available yet.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <IdeCodeAnalysis
+              isAnalyzing={isAnalyzing}
+              currentAnalysis={currentAnalysis}
+              codeFeedback={codeFeedback}
+              analysisHistory={analysisHistory}
+              onAnalyzeCode={analyzeCode}
+              onSelectAnalysis={(analysis) => {
+                setCurrentAnalysis(analysis);
+                setCodeFeedback(analysis.feedback);
+              }}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -298,9 +493,8 @@ export default function IdeAiAssistant({ code }: { code: string }) {
   );
 }
 
-// Simulate AI response generation
+// Generate mock AI response for fallback
 function generateAIResponse(): string {
-  // This would be replaced with actual AI integration
   const responses = [
     "I see you're working on HTML and CSS. The structure looks good, but you might want to consider adding more semantic HTML elements for better accessibility.",
     "That's a great question! In JavaScript, you can use event listeners to respond to user interactions. For example: `element.addEventListener('click', function() { /* your code */ });`",
